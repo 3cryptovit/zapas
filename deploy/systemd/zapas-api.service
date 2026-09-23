@@ -1,0 +1,38 @@
+[Unit]
+Description=Zapas API
+Documentation=https://github.com/3cryptovit/zapas
+After=network-online.target postgresql.service redis-server.service
+Wants=network-online.target
+Requires=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=zapas
+Group=zapas
+WorkingDirectory=/srv/zapas
+EnvironmentFile=/etc/zapas/zapas.env
+ExecStart=/srv/zapas/bin/app api
+Restart=always
+RestartSec=5
+
+# Логи в journald в формате JSON приложения (§9.1).
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=zapas-api
+
+# Машина общая с другими проектами: ограничиваем аппетит.
+MemoryMax=220M
+CPUQuota=60%
+
+# Сервису нужен только свой каталог и сокет postgres.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/zapas/var
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0f172a"/>
+  <rect x="80" y="80" width="60" height="60" rx="14" fill="#0f766e"/>
+  <path d="M95 100h30M95 110h30M95 120h18" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+  <text x="80" y="260" font-family="system-ui,sans-serif" font-size="76" font-weight="700" fill="#fff">
+    Продукты всегда в наличии
+  </text>
+  <text x="80" y="330" font-family="system-ui,sans-serif" font-size="34" fill="#94a3b8">
+    Склад, прогноз спроса и напоминания о заказе
+  </text>
+  <text x="80" y="378" font-family="system-ui,sans-serif" font-size="34" fill="#94a3b8">
+    для кофеен и кафе
+  </text>
+  <rect x="80" y="450" width="330" height="70" rx="12" fill="#0f766e"/>
+  <text x="112" y="495" font-family="system-ui,sans-serif" font-size="28" fill="#fff">
+    Открыть демо без регистрации
+  </text>
+</svg>

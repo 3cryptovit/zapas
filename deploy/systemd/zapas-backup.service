@@ -1,0 +1,7 @@
+[Unit]
+Description=Zapas database backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/srv/zapas/bin/backup.sh

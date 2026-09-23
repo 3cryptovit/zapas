@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1720" height="2010" viewBox="0 0 1720 2010" font-family="Segoe UI, Arial, sans-serif">
+<defs>
+<marker id="open" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="12" markerHeight="12" orient="auto" markerUnits="userSpaceOnUse">
+<path d="M1,1 L11,6 L1,11" fill="none" stroke="#3D444D" stroke-width="1.4"/></marker>
+<marker id="tri" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="16" markerHeight="16" orient="auto" markerUnits="userSpaceOnUse">
+<path d="M1,1 L15,8 L1,15 Z" fill="#fff" stroke="#3D444D" stroke-width="1.4"/></marker>
+</defs>
+<rect width="1720" height="2010" fill="#fff"/>
+<rect x="240" y="40" width="1255" height="1850" fill="#fff" stroke="#1F2328" stroke-width="1.6" rx="4"/>
+<text x="867.5" y="66" text-anchor="middle" font-size="18" font-weight="700" fill="#1F2328">Система Zapas</text>
+<rect x="262" y="78" width="1213" height="972" fill="#F6F7F9" stroke="#6E7781" stroke-width="1.3" rx="6"/>
+<text x="1461" y="100" text-anchor="end" font-size="14.5" font-weight="700" fill="#6E7781">Локальный функционал — внутри системы, без API-интеграций</text>
+<rect x="262" y="1070" width="1213" height="365" fill="#E8F0FE" stroke="#3B6FD4" stroke-width="1.3" rx="6"/>
+<text x="1461" y="1092" text-anchor="end" font-size="14.5" font-weight="700" fill="#3B6FD4">Собственное API Zapas — прогноз и рекомендация к заказу</text>
+<rect x="262" y="1455" width="1213" height="415" fill="#FDF0E4" stroke="#C4691B" stroke-width="1.3" rx="6"/>
+<text x="1461" y="1477" text-anchor="end" font-size="14.5" font-weight="700" fill="#C4691B">Внешние API — Telegram Bot API и SMTP</text>
+<path d="M211.0,153.0 L282.0,135.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M211.0,153.0 L282.0,220.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M121.0,548.0 L282.0,310.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M121.0,548.0 L282.0,495.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M121.0,548.0 L282.0,600.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M121.0,548.0 L282.0,830.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M121.0,1088.0 L282.0,400.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M121.0,1088.0 L282.0,1005.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M121.0,1088.0 L272.0,1130.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M121.0,1088.0 L260.0,1255.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M121.0,1088.0 L282.0,1525.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M121.0,1088.0 L282.0,1710.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M136.0,1528.0 L272.0,1380.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M136.0,1528.0 L282.0,1710.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M836.0,1560.0 L1584.0,1588.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M1186.0,1635.0 L1584.0,1588.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M1186.0,1795.0 L1584.0,1803.0" fill="none" stroke="#3D444D" stroke-width="1.3"/>
+<path d="M95.0,1048.0 L95.0,626.0" fill="none" stroke="#3D444D" stroke-width="1.3" marker-end="url(#tri)"/>
+<path d="M163.0,148.0 L22.0,148.0 L22.0,1083.0 L73.0,1083.0" fill="none" stroke="#3D444D" stroke-width="1.3" marker-end="url(#tri)"/>
+<path d="M518.0,135.0 L624.0,135.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M518.0,310.0 L624.0,310.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M612.0,400.0 L518.0,400.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M518.0,495.0 L618.0,495.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M506.3,588.7 L632.1,575.4" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M632.1,624.6 L506.3,611.3" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M509.4,841.6 L632.1,854.6" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M663.8,746.1 L475.1,806.1" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M632.1,805.4 L509.4,818.4" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M475.1,853.9 L663.8,913.9" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M518.0,1005.0 L934.0,1005.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M432.8,859.8 L701.4,1104.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M494.7,1023.5 L955.9,1113.6" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M528.0,1130.0 L624.0,1130.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M836.0,1130.0 L934.0,1130.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M1146.0,1130.0 L1234.0,1130.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M1040.0,1157.0 L1040.0,1243.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M525.7,1237.9 L636.5,1222.7" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M539.5,1258.3 L934.4,1267.5" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M504.4,1362.1 L952.1,1285.1" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M1126.0,1254.2 L1254.0,1230.8" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M1126.0,1285.8 L1254.0,1309.2" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M509.4,1513.4 L632.1,1500.4" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M509.4,1536.6 L632.1,1549.6" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M518.0,1710.0 L624.0,1710.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M998.9,1652.4 L811.1,1692.6" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M1003.3,1776.4 L806.7,1728.6" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<path d="M730.0,1793.0 L730.0,1737.0" fill="none" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<text x="571.0" y="126.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="571.0" y="301.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="565.0" y="391.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«extend»</text>
+<text x="568.0" y="486.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="569.2" y="573.1" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="569.2" y="630.4" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«extend»</text>
+<text x="569.2" y="644.9" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">[факт ≠ заказ &gt; 5%]</text>
+<text x="585.5" y="840.7" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="569.4" y="752.6" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«extend»</text>
+<text x="569.4" y="767.1" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">[тип = списание]</text>
+<text x="570.8" y="802.9" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«extend»</text>
+<text x="592.1" y="882.1" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="726.0" y="996.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="545.6" y="953.4" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="891.3" y="1092.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="576.0" y="1121.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="885.0" y="1121.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="1190.0" y="1121.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="1074.0" y="1200.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="581.1" y="1221.3" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="784.4" y="1255.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="782.0" y="1305.3" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="1190.0" y="1233.5" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="1190.0" y="1288.5" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="570.8" y="1497.9" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="570.8" y="1534.1" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="571.0" y="1701.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«include»</text>
+<text x="905.0" y="1649.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«extend»</text>
+<text x="905.0" y="1663.5" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">[канал = Telegram]</text>
+<text x="905.0" y="1729.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«extend»</text>
+<text x="905.0" y="1743.5" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">[канал = email]</text>
+<text x="656.0" y="1753.5" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">«extend»</text>
+<text x="656.0" y="1768.0" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A" stroke="#fff" stroke-width="4" stroke-linejoin="round" paint-order="stroke">[временная ошибка]</text>
+<ellipse cx="400" cy="135" rx="118" ry="31" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="131.6" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Открыть демо</text>
+<text x="400" y="148.1" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">без регистрации</text>
+<ellipse cx="400" cy="220" rx="118" ry="31" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="216.6" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Прокрутить время</text>
+<text x="400" y="233.1" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">в демо</text>
+<ellipse cx="400" cy="310" rx="118" ry="26" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="314.9" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Войти в систему</text>
+<ellipse cx="400" cy="400" rx="118" ry="31" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="396.6" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Вести справочники:</text>
+<text x="400" y="413.1" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">позиции, поставщики</text>
+<ellipse cx="400" cy="495" rx="118" ry="31" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="491.6" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Провести пересчёт</text>
+<text x="400" y="508.1" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">(инвентаризацию)</text>
+<ellipse cx="400" cy="600" rx="118" ry="26" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="604.9" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Принять поставку</text>
+<ellipse cx="400" cy="830" rx="118" ry="31" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="826.6" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Записать приход,</text>
+<text x="400" y="843.1" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">расход, списание</text>
+<ellipse cx="400" cy="1005" rx="118" ry="31" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="1001.6" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Оформить заказ</text>
+<text x="400" y="1018.1" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">поставщику</text>
+<ellipse cx="730" cy="135" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="131.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Сгенерировать</text>
+<text x="730" y="147.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">полгода истории</text>
+<ellipse cx="730" cy="310" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="306.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Проверить пароль,</text>
+<text x="730" y="322.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">открыть сессию</text>
+<ellipse cx="730" cy="400" rx="118" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="396.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Импортировать CSV</text>
+<text x="730" y="412.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">с предпросмотром ошибок</text>
+<ellipse cx="730" cy="495" rx="112" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="491.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Провести корректировку</text>
+<text x="730" y="507.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">«факт − учёт»</text>
+<ellipse cx="730" cy="565" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="561.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Создать приходы</text>
+<text x="730" y="577.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">по факту</text>
+<ellipse cx="730" cy="635" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="631.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Зафиксировать</text>
+<text x="730" y="647.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">расхождение</text>
+<ellipse cx="730" cy="865" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="861.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Проверить ключ</text>
+<text x="730" y="877.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">идемпотентности</text>
+<ellipse cx="730" cy="725" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="721.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Указать причину</text>
+<text x="730" y="737.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">списания</text>
+<ellipse cx="730" cy="795" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="791.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Сторнировать</text>
+<text x="730" y="807.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">ошибочное движение</text>
+<ellipse cx="730" cy="935" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="931.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Не допустить</text>
+<text x="730" y="947.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">минусового остатка</text>
+<ellipse cx="1040" cy="1005" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="1040" y="1001.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Сформировать</text>
+<text x="1040" y="1017.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">текст заявки</text>
+<ellipse cx="400" cy="1130" rx="128" ry="39" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="1118.4" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Узнать, что заказать</text>
+<text x="400" y="1134.9" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">сегодня</text>
+<text x="400" y="1151.4" text-anchor="middle" font-size="12" font-weight="600" fill="#1D4ED8" font-family="Consolas, monospace">GET /dashboard</text>
+<ellipse cx="400" cy="1255" rx="140" ry="39" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="1243.4" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Разобрать позицию</text>
+<text x="400" y="1259.9" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">и прогноз</text>
+<text x="400" y="1276.4" text-anchor="middle" font-size="12" font-weight="600" fill="#1D4ED8" font-family="Consolas, monospace">GET /items/{id}/insights</text>
+<ellipse cx="400" cy="1380" rx="128" ry="31" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="1376.6" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Пересчитать прогнозы</text>
+<text x="400" y="1393.1" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">(ночью, по расписанию)</text>
+<ellipse cx="730" cy="1130" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="1126.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Пересчитать</text>
+<text x="730" y="1142.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">статус позиции</text>
+<ellipse cx="1040" cy="1130" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="1040" y="1126.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Рассчитать точку</text>
+<text x="1040" y="1142.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">заказа и количество</text>
+<ellipse cx="1340" cy="1130" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="1340" y="1126.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Рассчитать окна</text>
+<text x="1340" y="1142.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">поставки d1, d2</text>
+<ellipse cx="730" cy="1210" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="1206.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Объяснить статус</text>
+<text x="730" y="1222.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">по шагам расчёта</text>
+<ellipse cx="1040" cy="1270" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="1040" y="1266.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Построить прогноз</text>
+<text x="1040" y="1282.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">на 14 дней (M1/M2)</text>
+<ellipse cx="1340" cy="1215" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="1340" y="1211.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Собрать дневной</text>
+<text x="1340" y="1227.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">ряд расхода</text>
+<ellipse cx="1340" cy="1325" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="1340" y="1321.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Оценить точность</text>
+<text x="1340" y="1337.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">бэктестом (WAPE)</text>
+<ellipse cx="400" cy="1525" rx="118" ry="31" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="1521.6" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Привязать</text>
+<text x="400" y="1538.1" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Telegram-чат</text>
+<ellipse cx="400" cy="1710" rx="118" ry="31" fill="#FFFFFF" stroke="#1F2328" stroke-width="2.3"/>
+<text x="400" y="1706.6" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">Получать сводку</text>
+<text x="400" y="1723.1" text-anchor="middle" font-size="13.5" font-weight="700" fill="#1F2328">и срочные алерты</text>
+<ellipse cx="730" cy="1490" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="1486.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Выдать ссылку</text>
+<text x="730" y="1502.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">t.me/бот?start=код</text>
+<ellipse cx="730" cy="1560" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="1556.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Принять вебхук,</text>
+<text x="730" y="1572.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">проверить секрет</text>
+<ellipse cx="730" cy="1710" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="1706.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Поставить в очередь</text>
+<text x="730" y="1722.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">(outbox)</text>
+<ellipse cx="1080" cy="1635" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="1080" y="1631.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Отправить через</text>
+<text x="1080" y="1647.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">sendMessage</text>
+<ellipse cx="1080" cy="1795" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="1080" y="1791.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Отправить письмо</text>
+<text x="1080" y="1807.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">по SMTP</text>
+<ellipse cx="730" cy="1820" rx="106" ry="27" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="730" y="1816.8" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">Повторить доставку</text>
+<text x="730" y="1832.2" text-anchor="middle" font-size="12.5" font-weight="400" fill="#1F2328">1 → 5 → 25 мин</text>
+<g fill="none" stroke="#1F2328" stroke-width="1.6"><circle cx="185" cy="125" r="11" fill="#fff"/><path d="M185,136 V169 M165,148 H205 M185,169 L170,195 M185,169 L200,195"/></g>
+<text x="185" y="215" text-anchor="middle" font-size="13.5" font-weight="600" fill="#1F2328">Посетитель</text>
+<text x="185" y="231" text-anchor="middle" font-size="13.5" font-weight="600" fill="#1F2328">демо</text>
+<g fill="none" stroke="#1F2328" stroke-width="1.6"><circle cx="95" cy="520" r="11" fill="#fff"/><path d="M95,531 V564 M75,543 H115 M95,564 L80,590 M95,564 L110,590"/></g>
+<text x="95" y="610" text-anchor="middle" font-size="13.5" font-weight="600" fill="#1F2328">Сотрудник</text>
+<g fill="none" stroke="#1F2328" stroke-width="1.6"><circle cx="95" cy="1060" r="11" fill="#fff"/><path d="M95,1071 V1104 M75,1083 H115 M95,1104 L80,1130 M95,1104 L110,1130"/></g>
+<text x="95" y="1150" text-anchor="middle" font-size="13.5" font-weight="600" fill="#1F2328">Владелец</text>
+<g fill="none" stroke="#1F2328" stroke-width="1.6"><circle cx="110" cy="1500" r="11" fill="#fff"/><path d="M110,1511 V1544 M90,1523 H130 M110,1544 L95,1570 M110,1544 L125,1570"/></g>
+<text x="110" y="1476" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A">«система»</text>
+<text x="110" y="1590" text-anchor="middle" font-size="13.5" font-weight="600" fill="#1F2328">Планировщик</text>
+<text x="110" y="1606" text-anchor="middle" font-size="13.5" font-weight="600" fill="#1F2328">(воркер)</text>
+<g fill="none" stroke="#1F2328" stroke-width="1.6"><circle cx="1610" cy="1560" r="11" fill="#fff"/><path d="M1610,1571 V1604 M1590,1583 H1630 M1610,1604 L1595,1630 M1610,1604 L1625,1630"/></g>
+<text x="1610" y="1536" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A">«внешняя система»</text>
+<text x="1610" y="1650" text-anchor="middle" font-size="13.5" font-weight="600" fill="#1F2328">Telegram</text>
+<text x="1610" y="1666" text-anchor="middle" font-size="13.5" font-weight="600" fill="#1F2328">Bot API</text>
+<g fill="none" stroke="#1F2328" stroke-width="1.6"><circle cx="1610" cy="1775" r="11" fill="#fff"/><path d="M1610,1786 V1819 M1590,1798 H1630 M1610,1819 L1595,1845 M1610,1819 L1625,1845"/></g>
+<text x="1610" y="1751" text-anchor="middle" font-size="11.5" font-style="italic" fill="#57606A">«внешняя система»</text>
+<text x="1610" y="1865" text-anchor="middle" font-size="13.5" font-weight="600" fill="#1F2328">SMTP-сервер</text>
+<g font-size="13" fill="#1F2328">
+<ellipse cx="300" cy="1926" rx="44" ry="13" fill="#fff" stroke="#1F2328" stroke-width="2.3"/>
+<text x="354" y="1931">основная функция — её вызывает актор (13)</text>
+<ellipse cx="300" cy="1958" rx="44" ry="13" fill="#EEF0F3" stroke="#1F2328" stroke-width="1.1"/>
+<text x="354" y="1963">внутреннее действие (24)</text>
+<path d="M700,1926 H790" stroke="#3D444D" stroke-width="1.2" stroke-dasharray="6 4" marker-end="url(#open)"/>
+<text x="802" y="1931">«include» — выполняется всегда; «extend» — только при условии в [скобках]</text>
+<rect x="700" y="1950" width="26" height="16" fill="#E8F0FE" stroke="#3B6FD4"/>
+<text x="734" y="1963">собственное API</text>
+<rect x="870" y="1950" width="26" height="16" fill="#FDF0E4" stroke="#C4691B"/>
+<text x="904" y="1963">внешние API</text>
+<text x="1020" y="1963" fill="#57606A">Посетитель демо наследует права владельца, но внешние каналы в демо отключены (403).</text>
+</g>
+</svg>

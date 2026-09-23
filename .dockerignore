@@ -1,0 +1,11 @@
+.git
+bin
+node_modules
+web/node_modules
+landing/node_modules
+web/dist
+landing/dist
+docs
+deploy
+*.md
+!go.mod

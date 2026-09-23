@@ -1,0 +1,27 @@
+# Go
+/bin/
+*.exe
+*.test
+coverage.out
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Tooling
+.idea/
+.vscode/
+.DS_Store
+/tmp/
+
+# Локальное: протокол работы и настройки редакторов
+CLAUDE.local.md
+*.local.md
+.claude/

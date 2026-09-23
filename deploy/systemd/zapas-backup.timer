@@ -1,0 +1,12 @@
+[Unit]
+Description=Zapas database backup (daily at 04:00)
+
+[Timer]
+# 04:00 — после ночного пересчёта прогноза в 03:00.
+OnCalendar=*-*-* 04:00:00
+# Если машина была выключена, снять копию при первой возможности.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

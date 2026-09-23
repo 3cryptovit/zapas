@@ -1,0 +1,18 @@
+# Окончания строк фиксируются в репозитории, а не отдаются на откуп
+# настройкам git на машине. Иначе редактор под Windows сохраняет файл с
+# CRLF, gofmt считает его незаформатированным, и CI падает на проверке,
+# в которой ни строчки кода не менялось.
+* text=auto eol=lf
+
+# Бинарное — не трогать.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.gz binary
+
+# Скрипты для Windows живут с CRLF: PowerShell и cmd ожидают их.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf

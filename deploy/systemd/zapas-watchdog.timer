@@ -1,0 +1,12 @@
+[Unit]
+Description=Zapas watchdog every 5 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+# Пять проектов на одной машине: разводим их таймеры во времени.
+RandomizedDelaySec=30
+Unit=zapas-watchdog.service
+
+[Install]
+WantedBy=timers.target

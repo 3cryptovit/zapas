@@ -1,0 +1,75 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - errorlint
+    - gosec
+    - misspell
+    - nilerr
+    - noctx
+    - revive
+    - rowserrcheck
+    - sqlclosecheck
+    - unconvert
+    - wastedassign
+  settings:
+    revive:
+      rules:
+        - name: context-as-argument
+        - name: error-return
+        - name: error-strings
+        - name: indent-error-flow
+        - name: unexported-return
+    gosec:
+      excludes:
+        - G104 # дублирует errcheck
+        # Преобразования int в int16/int32/uint32 идут от уже
+        # проверенных доменных величин: размер пула, лимит страницы,
+        # длина ключа argon2, окно прогноза в днях. Количества через
+        # int не проходят вовсе — они decimal (ADR-003).
+        - G115
+  exclusions:
+    rules:
+      # В тестах: незакрытое тело ответа и запрос без контекста
+      # безобидны, а «пароли» — это локальные фикстуры.
+      - path: _test\.go
+        linters: [gosec, errcheck, bodyclose, noctx]
+      # Единственное разрешённое место для time.Now().
+      - path: internal/clock/clock\.go
+        linters: [forbidigo]
+      # Учётки для локальной разработки и тестового кластера. Боевые
+      # секреты живут в /etc/zapas и в репозиторий не попадают.
+      - path: (internal/seed/seed\.go|internal/testsupport/)
+        linters: [gosec]
+        text: "G101"
+      # CSRF-токен читается скриптом намеренно: на этом стоит
+      # двойная отправка (ADR-007). Сессионная cookie выставлена
+      # с HttpOnly, Secure и SameSite — gosec не видит, что Secure
+      # приходит из конфига.
+      - path: internal/auth/http\.go
+        linters: [gosec]
+        text: "G124"
+      # Генератор демо-данных обязан быть воспроизводимым: одинаковый
+      # seed даёт одинаковую историю, на этом держатся тесты (§7.2).
+      - path: internal/sandbox/create\.go
+        linters: [gosec]
+        text: "G404"
+      # Разбор формы ограничен дважды: MaxBytesReader на теле и
+      # ParseMultipartForm с явным пределом.
+      - path: internal/catalog/http\.go
+        linters: [gosec]
+        text: "G120"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/vostapenko/zapas

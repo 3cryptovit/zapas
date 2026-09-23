@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+    <title>Zapas — продукты всегда в наличии</title>
+    <meta
+      name="description"
+      content="Склад, прогноз спроса и напоминания о заказе для кофеен и кафе. Система считает, что и когда заказать, и присылает сводку в Telegram."
+    />
+
+    <!-- Open Graph: ссылка должна выглядеть прилично в Telegram и в отклике (§8). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Zapas — продукты всегда в наличии" />
+    <meta
+      property="og:description"
+      content="Склад, прогноз спроса и напоминания о заказе для кофеен и кафе."
+    />
+    <meta property="og:image" content="/og.svg" />
+    <meta property="og:locale" content="ru_RU" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+
+  <body>
+    <!-- Служебная полоса: в референсе она задаёт масштаб всему
+         остальному — мелкое и разрядкой сверху, крупное ниже. -->
+    <div class="topbar">
+      <div class="wrap topbar__inner">
+        <span>Демо без регистрации</span>
+        <span class="topbar__right">
+          <a href="#how">Как работает</a>
+          <a href="#tech">Устройство</a>
+          <a href="/app/">Войти</a>
+        </span>
+      </div>
+    </div>
+
+    <div class="masthead">
+      <div class="wrap">
+        <span class="masthead__mark">Zapas</span>
+      </div>
+    </div>
+
+    <!-- 1. Первый экран: одна кнопка, один смысл. -->
+    <header class="hero">
+      <div class="wrap hero__inner">
+        <div class="hero__text">
+          <p class="eyebrow">Для кофеен, пекарен и кафе на 1–5 точек</p>
+          <h1>Продукты всегда в наличии</h1>
+          <p class="lead">
+            Склад, прогноз спроса и напоминания о заказе. Система сама считает,
+            что и когда заказать, — и присылает сводку в Telegram.
+          </p>
+
+          <div class="hero__actions">
+            <button type="button" class="btn btn--primary" data-demo>
+              Открыть демо без регистрации
+            </button>
+            <a class="btn btn--ghost" href="#how">Как это работает</a>
+          </div>
+
+          <p class="hero__note" data-demo-note>
+            Демо живёт 24 часа, регистрация не нужна.
+          </p>
+        </div>
+
+        <div class="hero__shot">
+          <!-- Схема дашборда вместо скриншота: она не устаревает
+               при изменении интерфейса и весит килобайты.
+               Статусы закодированы штриховкой — ровно как в самом
+               интерфейсе, где цвета нет. -->
+          <svg viewBox="0 0 420 300" role="img" aria-label="Схема дашборда: счётчики по статусам и таблица позиций">
+            <defs>
+              <pattern id="dense" width="5" height="5" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                <rect width="2" height="5" fill="#111111" />
+              </pattern>
+              <pattern id="sparse" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                <rect width="1" height="8" fill="#2b2a28" />
+              </pattern>
+            </defs>
+
+            <rect width="420" height="300" fill="#ffffff" />
+
+            <!-- Счётчики: чем тревожнее, тем плотнее заливка. -->
+            <rect x="16" y="16" width="92" height="52" fill="#111111" />
+            <text x="28" y="42" class="shot-num" fill="#f2f0ed">2</text>
+            <text x="28" y="58" class="shot-cap" fill="#f2f0ed">критично</text>
+
+            <rect x="116" y="16" width="92" height="52" fill="url(#sparse)" stroke="#2b2a28" />
+            <text x="128" y="42" class="shot-num" fill="#111111">6</text>
+            <text x="128" y="58" class="shot-cap" fill="#111111">заказать</text>
+
+            <rect x="216" y="16" width="92" height="52" fill="#ffffff" stroke="#c2bcb5" />
+            <text x="228" y="42" class="shot-num" fill="#111111">31</text>
+            <text x="228" y="58" class="shot-cap" fill="#6b6560">хватает</text>
+
+            <rect x="316" y="16" width="88" height="52" fill="#ffffff" stroke="#c2bcb5" stroke-dasharray="3 3" />
+            <text x="328" y="42" class="shot-num" fill="#6b6560">1</text>
+            <text x="328" y="58" class="shot-cap" fill="#6b6560">нет данных</text>
+
+            <rect x="16" y="84" width="388" height="1" fill="#c2bcb5" />
+
+            <!-- Строки таблицы: квадрат-образец слева от подписи. -->
+            <g class="shot-row" fill="#2b2a28">
+              <text x="16" y="108">Молоко 3,2%</text>
+              <text x="230" y="108" text-anchor="end">18 л</text>
+              <rect x="250" y="100" width="10" height="10" fill="url(#sparse)" stroke="#2b2a28" />
+              <text x="266" y="108" class="shot-cap" fill="#111111">заказать</text>
+              <text x="404" y="108" text-anchor="end" fill="#6b6560">2 кор.</text>
+            </g>
+            <g class="shot-row" fill="#2b2a28">
+              <text x="16" y="140">Стаканы 350 мл</text>
+              <text x="230" y="140" text-anchor="end">40 шт</text>
+              <rect x="250" y="132" width="10" height="10" fill="url(#dense)" stroke="#111111" />
+              <text x="266" y="140" class="shot-cap" fill="#111111">критично</text>
+              <text x="404" y="140" text-anchor="end" fill="#6b6560">4 уп.</text>
+            </g>
+            <g class="shot-row" fill="#2b2a28">
+              <text x="16" y="172">Зерно Бразилия</text>
+              <text x="230" y="172" text-anchor="end">6,4 кг</text>
+              <rect x="250" y="164" width="10" height="10" fill="#ffffff" stroke="#c2bcb5" />
+              <text x="266" y="172" class="shot-cap" fill="#6b6560">хватает</text>
+              <text x="404" y="172" text-anchor="end" fill="#6b6560">—</text>
+            </g>
+
+            <rect x="16" y="196" width="388" height="88" fill="#f2f0ed" />
+            <text x="28" y="218" class="shot-cap" fill="#111111">Почему такой статус</text>
+            <text x="28" y="238" class="shot-small" fill="#2b2a28">Сейчас 18 л, в пути 0.</text>
+            <text x="28" y="254" class="shot-small" fill="#2b2a28">До поставки в пн нужно 31 л + запас 4 л.</text>
+            <text x="28" y="270" class="shot-small" fill="#111111" font-weight="600">Не хватает 17 л → заказать 2 кор. (24 л)</text>
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <!-- 2. Проблема: узнавание. -->
+      <section class="section">
+        <div class="wrap">
+          <h2>Знакомо?</h2>
+          <div class="grid grid--3">
+            <article class="card">
+              <h3>Закончилось посреди смены</h3>
+              <p>
+                Молоко кончается в разгар утреннего потока. Бариста бежит
+                в магазин по розничной цене, очередь стоит.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Выбросили просрочку</h3>
+              <p>
+                Заказали с запасом «чтобы точно хватило» — половина ушла
+                в списание. Деньги сгорели дважды: при закупке и при выбросе.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Всё держится в голове владельца</h3>
+              <p>
+                Учётная система показывает остаток, но не отвечает на главный
+                вопрос: <em>когда заказывать</em>. Отпуск — и всё рассыпается.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Как работает: три шага. -->
+      <section class="section section--muted" id="how">
+        <div class="wrap">
+          <h2>Как это работает</h2>
+          <ol class="steps">
+            <li>
+              <span class="steps__num">1</span>
+              <h3>Учёт</h3>
+              <p>
+                Приход, расход, списания и пересчёт. Остаток никогда не правится
+                руками — он равен сумме движений, и любую цифру можно объяснить
+                по журналу.
+              </p>
+            </li>
+            <li>
+              <span class="steps__num">2</span>
+              <h3>Прогноз</h3>
+              <p>
+                Система считает расход на 14 дней вперёд по истории, с учётом
+                дня недели, и показывает собственную точность. Не «магия ИИ»,
+                а честные числа, которые видно.
+              </p>
+            </li>
+            <li>
+              <span class="steps__num">3</span>
+              <h3>Напоминание</h3>
+              <p>
+                Зная срок поставки и дни доставки поставщика, система считает,
+                хватит ли запаса до следующего заказа. Если нет — присылает
+                сводку с готовым количеством.
+              </p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- 4. Демонстрация: показать, не рассказывая. -->
+      <section class="section">
+        <div class="wrap grid grid--2">
+          <div>
+            <h2>Промотайте неделю за секунду</h2>
+            <p>
+              В демо есть кнопка «+7 дней». Система проживает неделю: списывает
+              расход, принимает поставки, пересчитывает прогноз и шлёт сводки.
+            </p>
+            <p>
+              Рядом — переключатель «автопилот». С ним система заказывает сама,
+              и через неделю почти всё зелёное. Без него позиции краснеют.
+              Это и есть сравнение «с системой и без».
+            </p>
+            <button type="button" class="btn btn--primary" data-demo>
+              Попробовать
+            </button>
+          </div>
+
+          <figure class="telegram">
+            <figcaption>Так приходит сводка в Telegram</figcaption>
+            <pre>Кофейня «Демо» · среда, 23 сентября
+
+Заказать сегодня (3)
+Молочная ферма — до 16:00, поставка в чт
+  • Молоко 3,2% — 2 кор. (24 л), сейчас хватит до пт
+  • Сливки 33% — 1 кор. (6 л)
+Кофе-Импорт — до 18:00, поставка в пт
+  • Зерно Бразилия — 2 × 1 кг
+
+Критично (1)
+  • Стаканы 350 мл — хватит только до завтра,
+    ближайшая поставка в пт
+
+Открыть дашборд →</pre>
+          </figure>
+        </div>
+      </section>
+
+      <!-- 5. Точность прогноза: доверие. -->
+      <section class="section section--muted">
+        <div class="wrap grid grid--2">
+          <div>
+            <h2>Точность видна, а не обещана</h2>
+            <p>
+              Каждую ночь система проверяет себя: строит прогноз на прошлые
+              дни по данным, которые были <em>тогда</em>, и сравнивает с тем,
+              что случилось на самом деле.
+            </p>
+            <p class="metric"><strong>86%</strong> точность на демо-данных</p>
+            <p class="muted">
+              В карточке позиции написано прямо: «86% за 28 дней, модель M2,
+              завышает на 3%». Если модель ошибается — это видно, а не скрыто.
+            </p>
+          </div>
+
+          <svg class="chart" viewBox="0 0 400 200" role="img" aria-label="График: прогноз и факт почти совпадают">
+            <line x1="30" y1="170" x2="390" y2="170" stroke="#cbd5e1" />
+            <line x1="30" y1="10" x2="30" y2="170" stroke="#cbd5e1" />
+            <polyline
+              points="40,120 80,108 120,132 160,96 200,116 240,72 280,64 320,110 360,100"
+              fill="none" stroke="#0f766e" stroke-width="2.5" />
+            <polyline
+              points="40,126 80,112 120,126 160,102 200,112 240,80 280,70 320,104 360,96"
+              fill="none" stroke="#b45309" stroke-width="2.5" stroke-dasharray="5 4" />
+            <text x="40" y="192" class="shot-small" fill="#0f766e">— факт</text>
+            <text x="110" y="192" class="shot-small" fill="#b45309">- - прогноз</text>
+          </svg>
+        </div>
+      </section>
+
+      <!-- 6. Как это устроено: для рекрутера и интервьюера. -->
+      <section class="section" id="tech">
+        <div class="wrap">
+          <h2>Как это устроено</h2>
+          <p class="muted">
+            Этот раздел — для тех, кто смотрит на проект как на код,
+            а не как на продукт.
+          </p>
+
+          <div class="grid grid--2">
+            <div>
+              <h3>Стек</h3>
+              <p class="muted">
+                Go (chi, pgx + sqlc, без ORM) · PostgreSQL 16 · Redis + asynq ·
+                React + TypeScript + Vite · Tailwind · systemd + Nginx
+              </p>
+
+              <h3>Ключевые решения</h3>
+              <ul class="list">
+                <li>
+                  <strong>Журнал движений.</strong> Таблица только дописывается:
+                  права на UPDATE и DELETE отозваны у роли приложения. Ошибка
+                  исправляется сторно, а не правкой.
+                </li>
+                <li>
+                  <strong>Изоляция тенантов на четырёх уровнях.</strong>
+                  Row-level security в базе, роль без BYPASSRLS, составные
+                  внешние ключи. Забытый <code>WHERE tenant_id</code>
+                  перестаёт быть уязвимостью.
+                </li>
+                <li>
+                  <strong>Transactional outbox.</strong> Уведомление пишется
+                  в одной транзакции с событием, отправкой занимается воркер.
+                  Telegram не влияет на время ответа API.
+                </li>
+                <li>
+                  <strong>Абстракция часов.</strong> <code>time.Now()</code>
+                  запрещён — время берётся из интерфейса. На этом держится
+                  «промотка времени» в демо.
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3>Что проверено тестами</h3>
+              <ul class="list">
+                <li>
+                  50 горутин одновременно списывают одну позицию: остаток
+                  не уходит в минус и сходится с журналом.
+                </li>
+                <li>
+                  Повтор запроса с тем же ключом не создаёт второе движение,
+                  повторная приёмка — второй приход.
+                </li>
+                <li>
+                  Чужой тенант получает 404 на любой ресурс; запросы без
+                  тенанта возвращают ноль строк.
+                </li>
+                <li>
+                  Точность прогноза на сгенерированных данных: WAPE ≤ 20%
+                  с фиксированным seed.
+                </li>
+              </ul>
+
+              <p class="links">
+                <a href="https://github.com/3cryptovit/zapas">Исходники на GitHub</a>
+                <a href="https://github.com/3cryptovit/zapas/tree/main/docs">Документация и ADR</a>
+                <a href="https://github.com/3cryptovit/zapas/blob/main/docs/spec.md">Техническое задание</a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. Об авторе. -->
+      <section class="section section--muted" id="author">
+        <div class="wrap">
+          <h2>Об авторе</h2>
+          <p>
+            Виталий Остапенко. Делаю бэкенд на Go и интерфейсы на React.
+            Этот проект — учебный: я хотел пройти путь целиком, от требований
+            и схемы данных до деплоя и мониторинга, и не срезать углы там,
+            где обычно срезают.
+          </p>
+          <p class="links">
+            <a href="https://github.com/3cryptovit">GitHub</a>
+            <a href="mailto:vitalnessss@gmail.com">vitalnessss@gmail.com</a>
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap">
+        <p>
+          Учебный проект, не коммерческий продукт. Регистрация реальных
+          клиентов закрыта — доступно только демо.
+        </p>
+        <p class="muted">
+          Данные демо удаляются через 24 часа. Персональных данных система
+          не собирает.
+        </p>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

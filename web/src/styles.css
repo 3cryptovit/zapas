@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+/*
+ * Монохромная палитра.
+ *
+ * Цветные шкалы Tailwind переопределены серыми: в разметке остаются
+ * привычные bg-red-100 и text-emerald-900, но рендерятся они нейтрально.
+ * Так редизайн не разошёлся по четырнадцати файлам, а откат — правка
+ * одного блока.
+ *
+ * Тон тёплый (hue 70): чистый серый на экране выглядит синим, а
+ * референс — бумажный.
+ */
+@theme {
+  /* Бумага и чернила. */
+  --color-paper: oklch(0.955 0.004 70);
+  --color-ink: oklch(0.17 0.003 70);
+
+  /* Нейтральная шкала — основа всего. */
+  --color-slate-50: oklch(0.975 0.003 70);
+  --color-slate-100: oklch(0.945 0.003 70);
+  --color-slate-200: oklch(0.9 0.003 70);
+  --color-slate-300: oklch(0.78 0.004 70);
+  --color-slate-400: oklch(0.68 0.003 70);
+  --color-slate-500: oklch(0.55 0.003 70);
+  --color-slate-600: oklch(0.44 0.003 70);
+  --color-slate-700: oklch(0.34 0.003 70);
+  --color-slate-800: oklch(0.25 0.003 70);
+  --color-slate-900: oklch(0.17 0.003 70);
+
+  /* Тревожные статусы — темнее и контрастнее нейтральных. */
+  --color-red-50: oklch(0.95 0.003 70);
+  --color-red-100: oklch(0.88 0.003 70);
+  --color-red-200: oklch(0.78 0.003 70);
+  --color-red-300: oklch(0.6 0.003 70);
+  --color-red-500: oklch(0.3 0.003 70);
+  --color-red-600: oklch(0.25 0.003 70);
+  --color-red-700: oklch(0.21 0.003 70);
+  --color-red-800: oklch(0.19 0.003 70);
+  --color-red-900: oklch(0.13 0.003 70);
+
+  /* Предупреждение — среднее по тону. */
+  --color-amber-50: oklch(0.96 0.003 70);
+  --color-amber-100: oklch(0.91 0.003 70);
+  --color-amber-200: oklch(0.83 0.003 70);
+  --color-amber-300: oklch(0.7 0.003 70);
+  --color-amber-500: oklch(0.45 0.003 70);
+  --color-amber-700: oklch(0.32 0.003 70);
+  --color-amber-900: oklch(0.22 0.003 70);
+
+  /* Спокойные статусы — светлее, уходят на задний план. */
+  --color-emerald-50: oklch(0.975 0.003 70);
+  --color-emerald-100: oklch(0.945 0.003 70);
+  --color-emerald-200: oklch(0.9 0.003 70);
+  --color-emerald-300: oklch(0.83 0.003 70);
+  --color-emerald-500: oklch(0.55 0.003 70);
+  --color-emerald-700: oklch(0.44 0.003 70);
+  --color-emerald-900: oklch(0.3 0.003 70);
+
+  /* Акцент — тот же чёрный: в монохроме выделяет вес, а не оттенок. */
+  --color-brand-50: oklch(0.945 0.003 70);
+  --color-brand-500: oklch(0.17 0.003 70);
+  --color-brand-700: oklch(0.13 0.003 70);
+
+  --font-sans: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--color-paper);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Поля ввода на телефоне: крупные, без зума при фокусе в iOS. */
+input,
+select,
+textarea {
+  font-size: 16px;
+}
+
+/*
+ * Микро-заголовок: прописные с широким трекингом. В референсе так
+ * набрана вся служебная мелочь — разделы, подписи, навигация.
+ */
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-slate-500);
+}
+
+/*
+ * Крупный набор. Издательский вид даётся размером, весом и
+ * отрицательным трекингом, а не гарнитурой: внешний шрифт
+ * запрещён политикой CSP.
+ */
+.display {
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+/* Волосяная линейка — основной разделитель вместо теней и рамок. */
+.rule {
+  border-top: 1px solid var(--color-slate-300);
+}
+
+/*
+ * Заливки статусов. Три независимых признака вместо цвета:
+ * плотность заливки, подпись и насыщенность шрифта. Штриховка
+ * переживает и чёрно-белую печать, и дальтонизм.
+ */
+.fill-solid {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.fill-dense {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-ink) 0 2px,
+    transparent 2px 5px
+  );
+}
+
+.fill-sparse {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--color-slate-700) 0 1px,
+    transparent 1px 7px
+  );
+}
+
+/* На печати фон обычно не печатается — заставляем. */
+@media print {
+  .fill-solid,
+  .fill-dense,
+  .fill-sparse {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

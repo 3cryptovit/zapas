@@ -1,0 +1,8 @@
+[Unit]
+Description=Zapas watchdog
+Documentation=https://github.com/3cryptovit/zapas
+
+[Service]
+Type=oneshot
+ExecStart=/srv/zapas/bin/watchdog.sh
+SyslogIdentifier=zapas-watchdog

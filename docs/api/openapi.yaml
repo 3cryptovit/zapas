@@ -1,0 +1,1606 @@
+openapi: 3.1.0
+
+info:
+  title: Zapas API
+  version: "1.0.0"
+  description: |
+    API системы учёта остатков и прогноза закупок для кофеен (§14.2).
+
+    ## Соглашения
+
+    **Количества — строки.** `"12.500"`, а не `12.5`. JSON-число проходит
+    через double, а остаток обязан сходиться с журналом движений до
+    третьего знака (§11). Все `qty` — десятичные строки с точкой.
+
+    **Даты.** `day` — календарный день в часовом поясе организации,
+    `YYYY-MM-DD`. Метки времени — RFC 3339 в UTC.
+
+    **Тенант не передаётся.** Организация берётся из серверной сессии;
+    параметра `tenant_id` в запросах нет и быть не может (§12.1).
+
+    **Ошибки** — RFC 9457 `application/problem+json`. Прикладные детали
+    лежат в расширениях верхнего уровня: например, при попытке списать
+    больше, чем есть, придёт `409` с полем `on_hand`.
+
+    **Идемпотентность.** Изменяющие запросы принимают заголовок
+    `Idempotency-Key`. Повтор с тем же ключом в течение 24 часов вернёт
+    первый ответ, а не создаст второе движение (FR-10).
+
+servers:
+  - url: https://zapas.85.198.64.102.nip.io/api/v1
+    description: Прод
+  - url: http://localhost:8080/api/v1
+    description: Локальная разработка
+
+tags:
+  - name: Аутентификация
+    description: "Вход, выход и профиль. Сессия серверная, в httpOnly cookie."
+  - name: Дашборд
+    description: "Главный экран «что заказать сегодня» и разбор отдельной позиции."
+  - name: Справочники
+    description: "Позиции, категории, поставщики, условия закупки и импорт из CSV."
+  - name: Склад
+    description: "Журнал движений: приход, расход, списание и сторнирование."
+  - name: Инвентаризация
+    description: "Пересчёт остатков и проведение расхождений."
+  - name: Заказы
+    description: "Сборка заказа по рекомендации, отправка и приёмка."
+  - name: Уведомления
+    description: "Лента событий: что закончится, что пора заказать, что не приехало."
+  - name: Telegram
+    description: "Привязка чата к организации и приём обновлений от бота."
+  - name: Песочница
+    description: "Демо без регистрации: готовая история и перемотка времени."
+  - name: Служебное
+    description: "Проверки живости и готовности для systemd и мониторинга."
+
+security:
+  - sessionCookie: []
+
+paths:
+  /auth/login:
+    post:
+      operationId: login
+      tags: [Аутентификация]
+      summary: Вход
+      description: |
+        Заводит серверную сессию и ставит два cookie: `zapas_session`
+        (httpOnly) и `zapas_csrf` (читаемый скриптом). Второй нужно
+        возвращать в заголовке `X-CSRF-Token` при каждом изменяющем
+        запросе (ADR-007).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200":
+          description: Вошли
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Problem" }
+        "429": { $ref: "#/components/responses/Problem" }
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [Аутентификация]
+      summary: Выход
+      description: Гасит сессию на сервере, а не только cookie в браузере.
+      responses:
+        "204": { description: Вышли }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /me:
+    get:
+      operationId: getMe
+      tags: [Аутентификация]
+      summary: Текущий пользователь и организация
+      description: |
+        Помимо профиля отдаёт `tenant.today` — «сегодня» в поясе
+        организации. В песочнице это виртуальная дата, сдвинутая
+        относительно настоящей (§7.2), поэтому фронтенд берёт день
+        отсюда, а не из часов браузера.
+      responses:
+        "200":
+          description: Профиль
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Me" }
+        "401": { $ref: "#/components/responses/Problem" }
+
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [Дашборд]
+      summary: Что заказать сегодня
+      description: |
+        Главный экран (§6.1): счётчики по статусам, сгруппированные по
+        поставщикам предложения к заказу и полный список позиций.
+      responses:
+        "200":
+          description: Дашборд
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Dashboard" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /items/{id}/insights:
+    get:
+      operationId: getItemInsights
+      tags: [Дашборд]
+      summary: Карточка позиции с прогнозом
+      description: |
+        История расхода, прогноз с коридором ±z·σ, проекция остатка и
+        блок «почему такой статус» — все числа, из которых сложилась
+        рекомендация (§6.2).
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Разбор позиции
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Insights" }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /items:
+    get:
+      operationId: listItems
+      tags: [Справочники]
+      summary: Список позиций
+      parameters:
+        - name: include_archived
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Позиции
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Item" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createItem
+      tags: [Справочники]
+      summary: Завести позицию
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, base_unit]
+              properties:
+                name: { type: string, maxLength: 200 }
+                base_unit: { $ref: "#/components/schemas/BaseUnit" }
+                category_id: { type: string, format: uuid }
+                default_supplier_id: { type: string, format: uuid }
+                manual_min_qty: { $ref: "#/components/schemas/Qty" }
+      responses:
+        "201":
+          description: Создана
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Item" }
+        "422": { $ref: "#/components/responses/Problem" }
+
+  /items/{id}:
+    get:
+      operationId: getItem
+      tags: [Справочники]
+      summary: Позиция
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200":
+          description: Позиция
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Item" }
+        "404": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateItem
+      tags: [Справочники]
+      summary: Изменить позицию
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                category_id: { type: string, format: uuid }
+                default_supplier_id: { type: string, format: uuid }
+                service_level:
+                  type: integer
+                  enum: [90, 95, 99]
+                  description: Уровень сервиса — множитель z в страховом запасе.
+                manual_min_qty: { $ref: "#/components/schemas/Qty" }
+      responses:
+        "200":
+          description: Изменена
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Item" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /items/{id}/archive:
+    post:
+      operationId: archiveItem
+      tags: [Справочники]
+      summary: Убрать позицию из работы
+      description: |
+        Именно архив, а не удаление: журнал движений неизменяем, и
+        история по позиции должна остаться читаемой (§3.3).
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "204":
+          description: В архиве
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [Справочники]
+      summary: Категории
+      responses:
+        "200":
+          description: Категории
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Category" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createCategory
+      tags: [Справочники]
+      summary: Завести категорию
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "201":
+          description: Создана
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Category" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /suppliers:
+    get:
+      operationId: listSuppliers
+      tags: [Справочники]
+      summary: Поставщики
+      responses:
+        "200":
+          description: Поставщики
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Supplier" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createSupplier
+      tags: [Справочники]
+      summary: Завести поставщика
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupplierInput" }
+      responses:
+        "201":
+          description: Создан
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Supplier" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /suppliers/{id}:
+    get:
+      operationId: getSupplier
+      tags: [Справочники]
+      summary: Поставщик
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200":
+          description: Поставщик
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Supplier" }
+        "404": { $ref: "#/components/responses/Problem" }
+
+  /suppliers/{supplierId}/items/{itemId}:
+    put:
+      operationId: setSupplierItemTerms
+      tags: [Справочники]
+      summary: Условия закупки позиции у поставщика
+      description: |
+        Единица заказа, пересчёт в базовую, минимальная партия и
+        кратность упаковки. Рекомендация округляется вверх до кратности:
+        заказать 1,3 коробки молока нельзя (§4.4).
+      parameters:
+        - name: supplierId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [purchase_unit, unit_factor]
+              properties:
+                purchase_unit:
+                  type: string
+                  description: Как называется единица заказа — «кор.», «уп.».
+                  example: "кор."
+                unit_factor:
+                  allOf: [{ $ref: "#/components/schemas/Qty" }]
+                  description: Сколько базовых единиц в одной единице заказа.
+                  example: "12"
+                min_order_qty: { $ref: "#/components/schemas/Qty" }
+                pack_multiple: { $ref: "#/components/schemas/Qty" }
+                price: { $ref: "#/components/schemas/Qty" }
+      responses:
+        "200": { description: Сохранено }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /imports/items:
+    post:
+      operationId: importItems
+      tags: [Справочники]
+      summary: Импорт позиций из CSV
+      description: |
+        Тело запроса — сам CSV, а не JSON с файлом внутри. При
+        `dry_run=true` ничего не пишется: возвращается разбор строк и
+        список ошибок, чтобы владелец увидел результат до импорта (§6.5).
+      parameters:
+        - name: dry_run
+          in: query
+          schema: { type: boolean, default: false }
+      requestBody:
+        required: true
+        content:
+          text/csv:
+            schema: { type: string }
+      responses:
+        "200":
+          description: |
+            Предпросмотр (`dry_run=true`) либо импорт, в котором часть
+            строк не прошла: ошибки перечислены в `errors`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportResult" }
+        "201":
+          description: Импортировано без ошибок
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ImportResult" }
+        "413": { $ref: "#/components/responses/Problem" }
+
+  /movements:
+    get:
+      operationId: listMovements
+      tags: [Склад]
+      summary: Лента движений
+      parameters:
+        - name: item_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: type
+          in: query
+          schema: { $ref: "#/components/schemas/MovementType" }
+        - name: author_id
+          in: query
+          schema: { type: string, format: uuid }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 200 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Страница ленты
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Movement" }
+                  next_cursor: { type: string }
+        "4XX": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createMovement
+      tags: [Склад]
+      summary: Записать приход, расход или списание
+      description: |
+        Журнал append-only: записанное движение не редактируется и не
+        удаляется. Ошиблись — гасите сторнированием (§3.3).
+
+        Расход больше остатка — `409` с полем `on_hand` в расширении
+        ответа: фронтенд показывает, сколько есть на самом деле.
+        Движение задним числом дальше, чем на 7 дней, и движение в
+        будущем не принимаются (FR-9).
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, item_id, qty]
+              properties:
+                type:
+                  type: string
+                  enum: [receipt, usage, writeoff]
+                item_id: { type: string, format: uuid }
+                qty:
+                  allOf: [{ $ref: "#/components/schemas/Qty" }]
+                  description: Строго больше нуля; знак задаётся типом движения.
+                reason:
+                  type: string
+                  enum: [spoiled, broken, expired, tasting, other]
+                  description: |
+                    Обязательна для списания: испортилось, бой, истёк
+                    срок, проливы и дегустации, другое.
+                comment: { type: string, maxLength: 500 }
+                occurred_at:
+                  type: string
+                  format: date-time
+                  description: По умолчанию — сейчас.
+      responses:
+        "201":
+          description: Записано
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MovementResponse" }
+        "409":
+          description: Не хватает остатка
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Problem"
+                  - type: object
+                    properties:
+                      on_hand: { $ref: "#/components/schemas/Qty" }
+              example:
+                type: "https://zapas.app/problems/insufficient-stock"
+                title: "Недостаточно остатка"
+                status: 409
+                detail: "На складе 3.500 l, списать хотят 5.000 l"
+                on_hand: "3.500"
+        "422": { $ref: "#/components/responses/Problem" }
+
+  /movements/{id}/reverse:
+    post:
+      operationId: reverseMovement
+      tags: [Склад]
+      summary: Сторнировать движение
+      description: |
+        Создаёт обратное движение типа `reversal` и связывает его с
+        исходным. Повторное сторнирование одного движения запрещено.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "201":
+          description: Сторнировано
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MovementResponse" }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /counts:
+    get:
+      operationId: listCounts
+      tags: [Инвентаризация]
+      summary: Список пересчётов
+      responses:
+        "200":
+          description: Пересчёты
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/StockCount" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createCount
+      tags: [Инвентаризация]
+      summary: Начать пересчёт
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scope:
+                  type: string
+                  enum: [all, category, supplier]
+                  default: all
+                scope_id: { type: string, format: uuid }
+                note: { type: string }
+      responses:
+        "201":
+          description: Черновик пересчёта
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StockCount" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /counts/{id}:
+    get:
+      operationId: getCount
+      tags: [Инвентаризация]
+      summary: Пересчёт со строками
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200":
+          description: Пересчёт
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StockCount" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /counts/{id}/lines:
+    put:
+      operationId: setCountLines
+      tags: [Инвентаризация]
+      summary: Сохранить введённые количества
+      description: |
+        Черновик сохраняется по мере ввода: пересчёт склада не
+        обязан уложиться в одну сессию браузера.
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lines]
+              properties:
+                lines:
+                  type: array
+                  items:
+                    type: object
+                    required: [item_id, counted_qty]
+                    properties:
+                      item_id: { type: string, format: uuid }
+                      counted_qty: { $ref: "#/components/schemas/Qty" }
+      responses:
+        "200":
+          description: Сохранено
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StockCount" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /counts/{id}/post:
+    post:
+      operationId: postCount
+      tags: [Инвентаризация]
+      summary: Провести пересчёт
+      description: |
+        Создаёт корректирующие движения `adjustment` на разницу. Если
+        остаток изменился после ввода количеств, запрос вернёт `409` —
+        подтвердить проведение можно флагом `force`.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Проведён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StockCount" }
+        "409": { $ref: "#/components/responses/Problem" }
+
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [Заказы]
+      summary: Заказы
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/OrderStatus" }
+      responses:
+        "200":
+          description: Заказы
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Order" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+    post:
+      operationId: createOrder
+      tags: [Заказы]
+      summary: Собрать заказ поставщику
+      description: |
+        Без строк в теле заказ собирается из текущей рекомендации по
+        всем позициям этого поставщика.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [supplier_id]
+              properties:
+                supplier_id: { type: string, format: uuid }
+                note: { type: string }
+                lines:
+                  type: array
+                  items:
+                    type: object
+                    required: [item_id, qty_ordered]
+                    properties:
+                      item_id: { type: string, format: uuid }
+                      qty_ordered: { $ref: "#/components/schemas/Qty" }
+      responses:
+        "201":
+          description: Черновик заказа
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [Заказы]
+      summary: Заказ
+      description: Поле text — готовый текст для отправки поставщику.
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      responses:
+        "200":
+          description: Заказ
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+    patch:
+      operationId: updateOrder
+      tags: [Заказы]
+      summary: Изменить черновик
+      parameters: [{ $ref: "#/components/parameters/Id" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string }
+                lines:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      item_id: { type: string, format: uuid }
+                      qty_ordered: { $ref: "#/components/schemas/Qty" }
+      responses:
+        "200":
+          description: Изменён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "409":
+          description: Заказ уже не черновик
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  /orders/{id}/send:
+    post:
+      operationId: sendOrder
+      tags: [Заказы]
+      summary: Отметить заказ отправленным
+      description: |
+        Количества из заказа попадают в on_order и учитываются в
+        позиции запаса: пока заказ в пути, повторно его не порекомендуют.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Отправлен
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /orders/{id}/cancel:
+    post:
+      operationId: cancelOrder
+      tags: [Заказы]
+      summary: Отменить заказ
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Отменён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /orders/{id}/receive:
+    post:
+      operationId: receiveOrder
+      tags: [Заказы]
+      summary: Принять поставку
+      description: |
+        Без тела принимается заказанное количество. Расхождение
+        фиксируется как есть и порождает уведомление: приёмка отражает
+        то, что привезли, а не то, что заказывали. Создаёт движения
+        receipt и обнуляет on_order по заказу.
+      parameters:
+        - $ref: "#/components/parameters/Id"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                lines:
+                  type: array
+                  items:
+                    type: object
+                    required: [item_id, qty_received]
+                    properties:
+                      item_id: { type: string, format: uuid }
+                      qty_received: { $ref: "#/components/schemas/Qty" }
+      responses:
+        "200":
+          description: Принят
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [Уведомления]
+      summary: Лента уведомлений
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50, maximum: 200 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Лента
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Feed" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /notifications/read:
+    post:
+      operationId: markNotificationsRead
+      tags: [Уведомления]
+      summary: Отметить прочитанными
+      description: Пустое тело отмечает всё.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Отмечено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  marked: { type: integer }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /telegram/link:
+    post:
+      operationId: createTelegramLink
+      tags: [Telegram]
+      summary: Ссылка для привязки чата
+      description: |
+        Выдаёт одноразовый код и готовую ссылку на бота. Код живёт 15
+        минут и гасится в том же запросе, которым читается, — повторно
+        привязать чат по нему нельзя даже при гонке (§5.5).
+
+        В демо недоступно: внешние каналы там отключены, ответ `403`.
+      responses:
+        "200":
+          description: Ссылка
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string, format: uri }
+                  code: { type: string }
+                  expires_at: { type: string, format: date-time }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /telegram/webhook:
+    post:
+      operationId: telegramWebhook
+      tags: [Telegram]
+      summary: Вебхук Telegram
+      description: |
+        Зовёт Telegram, а не браузер: сессии здесь нет. Подлинность
+        проверяется заголовком X-Telegram-Bot-Api-Secret-Token —
+        сравнение постоянное по времени, несовпадение даёт 403.
+
+        Понимает команду start с кодом привязки и команду stop для
+        отвязки; на остальное отвечает подсказкой. Telegram всегда
+        получает 200, чтобы не копить повторы.
+      security: []
+      parameters:
+        - name: X-Telegram-Bot-Api-Secret-Token
+          in: header
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Update из Bot API.
+      responses:
+        "200": { description: Принято }
+        "403": { description: Секрет не совпал }
+
+  /sandbox:
+    post:
+      operationId: createSandbox
+      tags: [Песочница]
+      summary: Открыть демо
+      description: |
+        Заводит отдельного тенанта с полугодом правдоподобной истории и
+        сразу впускает в него: логина и пароля не требуется. Живёт 24
+        часа, затем удаляется (§7.2). Частота ограничена по IP.
+
+        Если посетитель уже внутри живого демо, второго не создаётся:
+        ответ `200` возвращает то же самое. Иначе повторный клик тратил
+        бы лимит, хотя человек просто хотел попасть обратно.
+      security: []
+      responses:
+        "200":
+          description: |
+            Посетитель уже внутри живого демо — возвращается то же самое.
+            Ничего не создано, лимит не потрачен.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant_id: { type: string, format: uuid }
+                  expires_at: { type: string, format: date-time }
+                  redirect_to: { type: string }
+        "201":
+          description: Демо создано, сессия открыта
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant_id: { type: string, format: uuid }
+                  expires_at: { type: string, format: date-time }
+                  redirect_to: { type: string }
+        "429":
+          description: Слишком часто или достигнут предел живых демо
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  /sandbox/advance:
+    post:
+      operationId: advanceSandbox
+      tags: [Песочница]
+      summary: Прокрутить время вперёд
+      description: |
+        Сдвигает виртуальные часы организации на день или неделю и
+        проигрывает за этот период расход, приёмки и рассылку — чтобы
+        прогноз можно было увидеть в работе, не дожидаясь недели.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [days]
+              properties:
+                days: { type: integer, enum: [1, 7] }
+      responses:
+        "200":
+          description: Промотали
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdvanceResult" }
+        "403": { $ref: "#/components/responses/Problem" }
+
+  /sandbox/autopilot:
+    put:
+      operationId: setSandboxAutopilot
+      tags: [Песочница]
+      summary: Автопилот
+      description: Сам отправляет и принимает рекомендованные заказы при перемотке.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+      responses:
+        "200":
+          description: Переключено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  autopilot: { type: boolean }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /sandbox/reset:
+    post:
+      operationId: resetSandbox
+      tags: [Песочница]
+      summary: Начать демо заново
+      responses:
+        "200":
+          description: Куда идти дальше
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  redirect_to: { type: string }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /healthz:
+    servers:
+      - url: https://zapas.85.198.64.102.nip.io
+    get:
+      operationId: healthz
+      tags: [Служебное]
+      summary: Живость процесса
+      description: К зависимостям не обращается — отвечает, пока жив процесс.
+      security: []
+      responses:
+        "200":
+          description: Жив
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: ok }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /readyz:
+    servers:
+      - url: https://zapas.85.198.64.102.nip.io
+    get:
+      operationId: readyz
+      tags: [Служебное]
+      summary: Готовность принимать трафик
+      description: Проверяет PostgreSQL и Redis (§11).
+      security: []
+      responses:
+        "200":
+          description: Готов
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+        "503":
+          description: Зависимость недоступна
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: zapas_session
+      description: |
+        Серверная сессия в httpOnly cookie (ADR-007). Токена в
+        localStorage нет намеренно: его достаёт любой XSS.
+        Изменяющие запросы дополнительно требуют заголовок
+        X-CSRF-Token со значением cookie zapas_csrf.
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: |
+        UUID попытки. Повтор с тем же ключом в течение 24 часов вернёт
+        первый ответ — связь в зале пропадает чаще, чем хотелось бы.
+      schema: { type: string, format: uuid }
+
+  responses:
+    Problem:
+      description: Ошибка в формате RFC 9457
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+    Problem:
+      type: object
+      description: |
+        Прикладные детали лежат расширениями верхнего уровня, а не
+        внутри detail: так их читает код, а не человек.
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        request_id:
+          type: string
+          description: Тот же идентификатор есть в логах сервера.
+        fields:
+          type: object
+          description: Ошибки по полям формы — ключ это имя поля.
+          additionalProperties: { type: string }
+
+    Qty:
+      type: string
+      pattern: "^-?[0-9]+([.][0-9]{1,3})?$"
+      description: Количество десятичной строкой, до трёх знаков.
+      examples: ["12.500", "0", "-3.250"]
+
+    Day:
+      type: string
+      format: date
+      description: Календарный день в поясе организации.
+
+    BaseUnit:
+      type: string
+      enum: [kg, l, pcs]
+
+    ItemStatus:
+      type: string
+      enum: [out_of_stock, critical, order_today, ok, no_forecast]
+      description: |
+        no_forecast — данных ещё мало: система честно говорит, что не
+        знает, вместо того чтобы показать выдуманное число (§4.6).
+
+    MovementType:
+      type: string
+      enum: [opening, receipt, usage, writeoff, adjustment, reversal]
+
+    OrderStatus:
+      type: string
+      enum: [draft, sent, received, cancelled]
+
+    TimeOfDay:
+      type: object
+      properties:
+        Hour: { type: integer, minimum: 0, maximum: 23 }
+        Minute: { type: integer, minimum: 0, maximum: 59 }
+
+    Me:
+      type: object
+      properties:
+        user:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            email: { type: string, format: email }
+            name: { type: string }
+            role: { type: string, enum: [owner, staff] }
+            role_label: { type: string }
+            telegram_linked: { type: boolean }
+        tenant:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            timezone: { type: string, example: Europe/Moscow }
+            is_sandbox: { type: boolean }
+            today: { $ref: "#/components/schemas/Day" }
+            expires_at: { type: string, format: date-time }
+            permissions:
+              type: object
+              properties:
+                manage_catalog: { type: boolean }
+                manage_settings: { type: boolean }
+                manage_orders: { type: boolean }
+                export_csv: { type: boolean }
+
+    Dashboard:
+      type: object
+      properties:
+        today: { $ref: "#/components/schemas/Day" }
+        counters:
+          type: object
+          properties:
+            out_of_stock: { type: integer }
+            critical: { type: integer }
+            order_today: { type: integer }
+            ok: { type: integer }
+            no_forecast: { type: integer }
+            total: { type: integer }
+        suggestions:
+          type: array
+          items: { $ref: "#/components/schemas/SupplierSuggestion" }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/DashboardRow" }
+
+    DashboardRow:
+      type: object
+      properties:
+        item_id: { type: string, format: uuid }
+        name: { type: string }
+        base_unit: { $ref: "#/components/schemas/BaseUnit" }
+        category_name: { type: string }
+        on_hand: { $ref: "#/components/schemas/Qty" }
+        on_order: { $ref: "#/components/schemas/Qty" }
+        status: { $ref: "#/components/schemas/ItemStatus" }
+        stockout_date: { $ref: "#/components/schemas/Day" }
+        order_by:
+          type: string
+          description: До какого времени сегодня успеть с заказом.
+        recommended_qty: { $ref: "#/components/schemas/Qty" }
+        purchase_qty:
+          allOf: [{ $ref: "#/components/schemas/Qty" }]
+          description: То же количество в единицах заказа поставщика.
+        purchase_unit: { type: string }
+        supplier_id: { type: string, format: uuid }
+        supplier_name: { type: string }
+        accuracy:
+          type: number
+          description: Точность прогноза, 100 минус WAPE.
+        forecast_model: { type: string, enum: [M0, M1, M2] }
+
+    SupplierSuggestion:
+      type: object
+      properties:
+        supplier_id: { type: string, format: uuid }
+        supplier_name: { type: string }
+        contact: { type: string }
+        order_by: { $ref: "#/components/schemas/TimeOfDay" }
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/DashboardRow" }
+
+    Insights:
+      type: object
+      properties:
+        today: { $ref: "#/components/schemas/Day" }
+        item:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            base_unit: { $ref: "#/components/schemas/BaseUnit" }
+            category_name: { type: string }
+            service_level: { type: integer }
+            manual_min_qty: { $ref: "#/components/schemas/Qty" }
+            supplier_id: { type: string, format: uuid }
+            supplier_name: { type: string }
+            purchase_unit: { type: string }
+            unit_factor: { $ref: "#/components/schemas/Qty" }
+        status:
+          type: object
+          properties:
+            code: { $ref: "#/components/schemas/ItemStatus" }
+            on_hand: { $ref: "#/components/schemas/Qty" }
+            on_order: { $ref: "#/components/schemas/Qty" }
+            stockout_date: { $ref: "#/components/schemas/Day" }
+            order_by: { type: string }
+            recommended_qty: { $ref: "#/components/schemas/Qty" }
+            purchase_qty: { $ref: "#/components/schemas/Qty" }
+            target_level: { $ref: "#/components/schemas/Qty" }
+            safety_stock: { $ref: "#/components/schemas/Qty" }
+            explanation: { $ref: "#/components/schemas/Explanation" }
+        accuracy:
+          type: object
+          description: Качество прогноза на отложенной выборке (§4.5).
+          properties:
+            model: { type: string, enum: [M0, M1, M2] }
+            accuracy: { type: number }
+            wape: { type: number }
+            bias: { type: number }
+            sigma: { type: number }
+            window_days: { type: integer }
+            days_with_data: { type: integer }
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              day: { $ref: "#/components/schemas/Day" }
+              qty: { $ref: "#/components/schemas/Qty" }
+              has_data: { type: boolean }
+              stockout:
+                type: boolean
+                description: |
+                  День с нулевым остатком исключается из обучения:
+                  ноль продаж из-за отсутствия товара — это не спрос.
+        forecast:
+          type: array
+          items:
+            type: object
+            properties:
+              day: { $ref: "#/components/schemas/Day" }
+              qty: { $ref: "#/components/schemas/Qty" }
+              lower: { $ref: "#/components/schemas/Qty" }
+              upper: { $ref: "#/components/schemas/Qty" }
+        projection:
+          type: array
+          items:
+            type: object
+            properties:
+              day: { $ref: "#/components/schemas/Day" }
+              on_hand: { $ref: "#/components/schemas/Qty" }
+              incoming: { $ref: "#/components/schemas/Qty" }
+        incoming:
+          type: array
+          items:
+            type: object
+            properties:
+              day: { $ref: "#/components/schemas/Day" }
+              qty: { $ref: "#/components/schemas/Qty" }
+
+    Explanation:
+      type: object
+      description: |
+        Числа блока «почему такой статус»: позиция запаса, потребность
+        до следующей доставки, страховой запас, целевой уровень и
+        недобор. Рекомендация — это целевой уровень минус позиция
+        запаса, округлённая вверх до кратности упаковки (§6.2).
+      properties:
+        model: { type: string }
+        on_hand: { $ref: "#/components/schemas/Qty" }
+        on_order: { $ref: "#/components/schemas/Qty" }
+        inventory_position: { $ref: "#/components/schemas/Qty" }
+        need_until_d2: { $ref: "#/components/schemas/Qty" }
+        safety_stock: { $ref: "#/components/schemas/Qty" }
+        target_level: { $ref: "#/components/schemas/Qty" }
+        shortfall: { $ref: "#/components/schemas/Qty" }
+        recommended_qty: { $ref: "#/components/schemas/Qty" }
+        d1:
+          type: [string, "null"]
+          format: date
+          description: Ближайшая возможная доставка.
+        d2:
+          type: [string, "null"]
+          format: date
+          description: Следующая за ней — до неё и нужно дожить.
+        order_by: { type: string }
+        days_to_d2: { type: integer }
+        sigma: { type: number }
+        z: { type: number }
+        can_wait:
+          type: boolean
+          description: Успеваем ли дождаться следующего дня доставки.
+
+    Movement:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        item_id: { type: string, format: uuid }
+        item_name: { type: string }
+        base_unit: { $ref: "#/components/schemas/BaseUnit" }
+        type: { $ref: "#/components/schemas/MovementType" }
+        type_label: { type: string }
+        qty: { $ref: "#/components/schemas/Qty" }
+        occurred_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+        created_by: { type: string, format: uuid }
+        author_name: { type: string }
+        reason: { type: string }
+        reason_label: { type: string }
+        comment: { type: string }
+        order_id: { type: string, format: uuid }
+        count_id: { type: string, format: uuid }
+        reverses_id: { type: string, format: uuid }
+        reversed: { type: boolean }
+
+    MovementResponse:
+      type: object
+      description: |
+        Вместе с движением возвращается пересчитанный остаток и новый
+        статус позиции: экрану не нужно ходить за ними отдельно.
+      properties:
+        movement: { $ref: "#/components/schemas/Movement" }
+        balance:
+          type: object
+          properties:
+            item_id: { type: string, format: uuid }
+            on_hand: { $ref: "#/components/schemas/Qty" }
+            on_order: { $ref: "#/components/schemas/Qty" }
+            updated_at: { type: string, format: date-time }
+        status:
+          type: object
+          properties:
+            code: { $ref: "#/components/schemas/ItemStatus" }
+            stockout_date: { $ref: "#/components/schemas/Day" }
+            order_by: { type: string }
+            recommended_qty: { $ref: "#/components/schemas/Qty" }
+
+    Item:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        base_unit: { $ref: "#/components/schemas/BaseUnit" }
+        unit_label: { type: string }
+        category_id: { type: string, format: uuid }
+        category_name: { type: string }
+        default_supplier_id: { type: string, format: uuid }
+        supplier_name: { type: string }
+        service_level: { type: integer }
+        manual_min_qty: { $ref: "#/components/schemas/Qty" }
+        archived_at: { type: string, format: date-time }
+
+    Category:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+
+    SupplierInput:
+      type: object
+      required: [name, lead_time_days, delivery_weekdays, order_cutoff]
+      properties:
+        name: { type: string }
+        contact:
+          type: string
+          description: Telegram или телефон — куда отправлять заказ.
+        lead_time_days:
+          type: integer
+          minimum: 0
+          description: Через сколько дней после заказа приедет.
+        delivery_weekdays:
+          type: array
+          description: Дни доставки, 1 — понедельник, 7 — воскресенье.
+          items: { type: integer, minimum: 1, maximum: 7 }
+        order_cutoff:
+          type: string
+          pattern: "^[0-9]{2}:[0-9]{2}$"
+          description: До какого времени принимается заказ на ближайшую доставку.
+          example: "16:00"
+
+    Supplier:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        contact: { type: string }
+        lead_time_days: { type: integer }
+        delivery_weekdays:
+          type: array
+          items: { type: integer }
+        order_cutoff: { $ref: "#/components/schemas/TimeOfDay" }
+        archived_at: { type: string, format: date-time }
+
+    Order:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        supplier_id: { type: string, format: uuid }
+        supplier_name: { type: string }
+        status: { $ref: "#/components/schemas/OrderStatus" }
+        status_label: { type: string }
+        expected_at:
+          type: [string, "null"]
+          format: date
+        sent_at: { type: string, format: date-time }
+        received_at: { type: string, format: date-time }
+        cancelled_at: { type: string, format: date-time }
+        note: { type: string }
+        created_at: { type: string, format: date-time }
+        late:
+          type: boolean
+          description: Отправлен, но не приехал в ожидаемый день.
+        text:
+          type: string
+          description: Готовый текст заказа для отправки поставщику.
+        lines:
+          type: array
+          items: { $ref: "#/components/schemas/OrderLine" }
+
+    OrderLine:
+      type: object
+      properties:
+        item_id: { type: string, format: uuid }
+        item_name: { type: string }
+        base_unit: { $ref: "#/components/schemas/BaseUnit" }
+        qty_ordered: { $ref: "#/components/schemas/Qty" }
+        qty_received: { $ref: "#/components/schemas/Qty" }
+        purchase_unit: { type: string }
+        unit_factor: { $ref: "#/components/schemas/Qty" }
+        price: { $ref: "#/components/schemas/Qty" }
+
+    StockCount:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [draft, posted] }
+        scope: { type: string }
+        note: { type: string }
+        created_at: { type: string, format: date-time }
+        posted_at: { type: string, format: date-time }
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              item_id: { type: string, format: uuid }
+              item_name: { type: string }
+              base_unit: { $ref: "#/components/schemas/BaseUnit" }
+              expected_qty:
+                allOf: [{ $ref: "#/components/schemas/Qty" }]
+                description: Остаток на момент начала пересчёта.
+              current_qty:
+                allOf: [{ $ref: "#/components/schemas/Qty" }]
+                description: Остаток сейчас — мог измениться во время пересчёта.
+              counted_qty: { $ref: "#/components/schemas/Qty" }
+              diff: { $ref: "#/components/schemas/Qty" }
+
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type:
+          type: string
+          enum: [daily_digest, critical, cutoff_reminder, order_late, receipt_mismatch]
+        type_label: { type: string }
+        read: { type: boolean }
+        created_at: { type: string, format: date-time }
+        payload:
+          type: object
+          properties:
+            title: { type: string }
+            body: { type: string }
+            link: { type: string }
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  qty: { $ref: "#/components/schemas/Qty" }
+                  unit: { type: string }
+                  note: { type: string }
+
+    Feed:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/Notification" }
+        next_cursor: { type: string }
+        unread: { type: integer }
+
+    AdvanceResult:
+      type: object
+      properties:
+        days: { type: integer }
+        today: { $ref: "#/components/schemas/Day" }
+        received: { type: integer }
+        ordered: { type: integer }
+        notifications: { type: integer }
+
+    ImportResult:
+      type: object
+      properties:
+        dry_run: { type: boolean }
+        items: { type: integer }
+        categories: { type: integer }
+        suppliers: { type: integer }
+        with_opening: { type: integer }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              line: { type: integer }
+              column: { type: string }
+              message: { type: string }
+        preview:
+          type: array
+          items:
+            type: object
+            properties:
+              line: { type: integer }
+              name: { type: string }
+              category: { type: string }
+              base_unit: { $ref: "#/components/schemas/BaseUnit" }
+              supplier: { type: string }
+              opening_qty: { $ref: "#/components/schemas/Qty" }
+
+    Readiness:
+      type: object
+      properties:
+        ready: { type: boolean }
+        checks:
+          type: object
+          additionalProperties: { type: string, enum: [ok, fail] }
