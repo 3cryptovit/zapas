@@ -90,10 +90,11 @@ jobs:
   sqlc:
     name: sqlc — сгенерированный код не отстал
     runs-on: ubuntu-latest
-    container: sqlc/sqlc:latest
     steps:
       - uses: actions/checkout@v4
-      - run: sqlc diff
+      - uses: docker://sqlc/sqlc:latest
+        with:
+          args: diff
 
   secrets:
     name: Секреты в истории
