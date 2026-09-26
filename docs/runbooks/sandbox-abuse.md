@@ -31,7 +31,7 @@ sudo -u postgres psql -qtA -d zapas -c \
 
 # Откуда приходят: адрес клиента пишет nginx, а не приложение —
 # в журнале сервиса его нет.
-grep 'POST /api/v1/sandbox' /var/log/nginx/access.log \
+grep 'POST /zapas/api/v1/sandbox' /var/log/nginx/access.log \
   | awk '{print $1}' | sort | uniq -c | sort -rn | head
 
 # Место на диске
@@ -80,14 +80,21 @@ systemctl restart zapas-api
 nginx -t && systemctl reload nginx
 ```
 
-Блок в `/etc/nginx/sites-available/zapas.conf`, внутри `server`:
+Блок в `/etc/nginx/snippets/zapas.conf`, рядом с остальными
+`location` Zapas:
 
 ```nginx
-location = /api/v1/sandbox {
+location = /zapas/api/v1/sandbox {
     deny 203.0.113.5;
-    proxy_pass http://127.0.0.1:8080;
+    proxy_pass http://127.0.0.1:8080/api/v1/sandbox;
+    proxy_set_header X-Real-IP $remote_addr;
 }
 ```
+
+`X-Real-IP` обязателен. Приложение берёт адрес клиента только из него
+и только с петли. Без заголовка каждый посетитель выглядит как
+`127.0.0.1`, все делят один лимит «5 демо в час», и после пятого демо
+кнопка перестаёт работать у всех.
 
 Не забудьте `nginx -t` до `reload`: на этой машине битый конфиг
 положит и свадебный сайт, у которого настоящие посетители.

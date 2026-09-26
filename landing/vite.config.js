@@ -6,7 +6,8 @@ import { defineConfig } from 'vite'
 // одна кнопка. Без фреймворка Lighthouse проходит с большим запасом,
 // и до клика по кнопке демо запросов к API нет вообще.
 export default defineConfig({
-  base: '/',
+  // Лендинг — корень Zapas на общем домене: vitalness.ru/zapas/.
+  base: '/zapas/',
   build: {
     target: 'es2020',
     cssMinify: true,

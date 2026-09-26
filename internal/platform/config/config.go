@@ -23,8 +23,9 @@ type Config struct {
 }
 
 type App struct {
-	Env     string // dev | prod
-	Addr    string
+	Env  string // dev | prod
+	Addr string
+	// BaseURL — публичный адрес вместе с путём: https://vitalness.ru/zapas.
 	BaseURL string
 }
 
@@ -85,9 +86,11 @@ func Load() (Config, error) {
 
 	cfg := Config{
 		App: App{
-			Env:     def(os.Getenv("APP_ENV"), "dev"),
-			Addr:    def(os.Getenv("APP_ADDR"), ":8080"),
-			BaseURL: def(os.Getenv("APP_BASE_URL"), "http://localhost:5173"),
+			Env:  def(os.Getenv("APP_ENV"), "dev"),
+			Addr: def(os.Getenv("APP_ADDR"), ":8080"),
+			// Слеш на конце срезается: к адресу дописывают "/app/...", и
+			// "zapas//app" роутер кабинета уже не узнаёт.
+			BaseURL: strings.TrimRight(def(os.Getenv("APP_BASE_URL"), "http://localhost:5173/zapas"), "/"),
 		},
 		DB: DB{
 			URL:      required("DATABASE_URL"),

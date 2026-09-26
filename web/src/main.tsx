@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 
 import { App } from './App'
+import { ROUTER_BASENAME } from './lib/paths'
 import './styles.css'
 
 const queryClient = new QueryClient({
@@ -23,7 +24,7 @@ if (!root) throw new Error('не найден #root')
 createRoot(root).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename="/app">
+      <BrowserRouter basename={ROUTER_BASENAME}>
         <App />
       </BrowserRouter>
     </QueryClientProvider>

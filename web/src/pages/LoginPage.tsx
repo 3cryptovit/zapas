@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { Alert, Button, Field, Input } from '@/components/ui'
 import { ApiError } from '@/lib/api'
+import { ROOT } from '@/lib/paths'
 import { useLogin } from '@/lib/queries'
 
 export function LoginPage() {
@@ -77,7 +78,7 @@ export function LoginPage() {
 
         <p className="mt-4 text-center text-sm text-slate-500">
           Нет аккаунта?{' '}
-          <a href="/" className="font-medium text-brand-700 hover:underline">
+          <a href={ROOT} className="font-medium text-brand-700 hover:underline">
             Посмотрите демо без регистрации
           </a>
         </p>

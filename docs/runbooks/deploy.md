@@ -40,10 +40,13 @@ Actions → Deploy → Run workflow, в поле подтверждения на
 ## Проверка руками после выката
 
 ```bash
-curl -s https://zapas.85.198.64.102.nip.io/readyz
-curl -o /dev/null -w '%{http_code}\n' https://zapas.85.198.64.102.nip.io/app/
+curl -s https://vitalness.ru/zapas/readyz
+curl -o /dev/null -w '%{http_code}\n' https://vitalness.ru/zapas/app/
 journalctl -u zapas-api -n 30 --no-pager | grep -i error
 ```
+
+Если локальный DNS за VPN, добавьте `--resolve vitalness.ru:443:85.198.64.102`:
+VPN в режиме fake-ip отвечает подменным адресом из 198.18.0.0/15.
 
 И зайти в кабинет: дашборд должен открыться и показать позиции.
 
@@ -61,42 +64,48 @@ journalctl -u zapas-api -n 30 --no-pager | grep -i error
 конфиг общий с пятью другими проектами, и менять его должен человек,
 а не скрипт.
 
-Две ловушки, на которые уже наступали:
+Zapas живёт на `vitalness.ru/zapas/` и своего `server` не имеет.
+Сервер `vitalness.ru` принадлежит репозиторию портфолио, а Zapas
+поставляет только свои `location`:
 
-- **Имя файла на сервере другое.** В репозитории он
-  `deploy/nginx/zapas.conf`, на сервере включён
-  `/etc/nginx/sites-available/zapas` — **без `.conf`**. Симлинк
-  `sites-enabled/zapas` ведёт именно туда. Загрузка в `zapas.conf`
-  создаёт второй файл, который никто не читает, — и правка молча не
-  применяется.
-- **Переводы строк.** Файл из репозитория может приехать с CRLF. nginx
-  его переварит, но `diff` с живым конфигом станет бесполезен.
+| В репозитории | На сервере |
+|---|---|
+| `deploy/nginx/zapas.conf` | `/etc/nginx/snippets/zapas.conf` |
+
+Файл подключается строкой `include /etc/nginx/snippets/zapas.conf;`
+в `/etc/nginx/sites-available/vitalness`. Сам по себе он ничего не
+включает: загрузка под другим именем молча не применяется.
 
 Порядок:
 
 ```bash
-scp deploy/nginx/zapas.conf root@85.198.64.102:/tmp/zapas.conf
+tr -d '\r' < deploy/nginx/zapas.conf |
+  ssh root@85.198.64.102 'cat > /tmp/zapas.snippet'
 
 ssh root@85.198.64.102 'set -e
-  cp -p /etc/nginx/sites-available/zapas /etc/nginx/sites-available/zapas.bak
-  tr -d "" < /tmp/zapas.conf > /etc/nginx/sites-available/zapas
+  dst=/etc/nginx/snippets/zapas.conf
+  cp -p "$dst" /tmp/zapas.snippet.prev
+  install -m 644 /tmp/zapas.snippet "$dst"
   if nginx -t; then
     systemctl reload nginx
   else
-    cp -p /etc/nginx/sites-available/zapas.bak /etc/nginx/sites-available/zapas
+    install -m 644 /tmp/zapas.snippet.prev "$dst"
     echo "конфиг сломан, вернул прежний"
     exit 1
   fi'
 ```
+
+`tr -d '\r'` — потому что файл с Windows может приехать с CRLF: nginx
+его переварит, но `diff` с живым конфигом станет бесполезен.
 
 `nginx -t` до `reload` обязателен, и откат встроен в ту же команду:
 битый конфиг положит не только Zapas, но и свадебный сайт с настоящими
 посетителями. После — проверьте соседей:
 
 ```bash
-for d in vadim-lubov-wedding.ru vmeste.85.198.64.102.nip.io zapas.85.198.64.102.nip.io; do
-  echo "$d $(curl -s -o /dev/null -w '%{http_code}' -k -H "Host: $d" https://127.0.0.1/)"
-done
+ssh root@85.198.64.102 'for d in vadim-lubov-wedding.ru vitalness.ru; do
+  echo "$d $(curl -s -o /dev/null -w "%{http_code}" -k --resolve "$d:443:127.0.0.1" "https://$d/")"
+done'
 ```
 
 ## Чего не делать

@@ -66,11 +66,12 @@ function login() {
     fail(`вход не удался: ${res.status} ${res.body}`)
   }
 
-  const jar = http.cookieJar().cookiesForURL(BASE)
-  const sid = jar.zapas_session && jar.zapas_session[0]
+  // Cookie берутся из самого ответа, а не из банки по адресу: у них путь
+  // приложения (/zapas/), и банка для корня адреса их не отдаёт.
+  const sid = res.cookies.zapas_session && res.cookies.zapas_session[0].value
   // Двойная отправка: токен приходит в читаемой cookie и должен
   // вернуться заголовком (ADR-007).
-  const csrf = jar.zapas_csrf && jar.zapas_csrf[0]
+  const csrf = res.cookies.zapas_csrf && res.cookies.zapas_csrf[0].value
   if (!sid || !csrf) {
     fail('в ответе нет cookie сессии или CSRF-токена')
   }

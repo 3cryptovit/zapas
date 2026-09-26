@@ -74,8 +74,12 @@ else
 fi
 
 # --- срок сертификата ---
-cert=/etc/letsencrypt/live/zapas.85.198.64.102.nip.io/cert.pem
-if [ -f "$cert" ]; then
+# Отсутствие файла — тоже тревога: иначе неверный путь после смены
+# домена выключает проверку молча, и о сертификате узнают посетители.
+cert=/etc/letsencrypt/live/vitalness.ru/cert.pem
+if [ ! -f "$cert" ]; then
+  problems+=("не найден сертификат $cert")
+else
   until_ts=$(date -d "$(openssl x509 -enddate -noout -in "$cert" | cut -d= -f2)" +%s)
   days=$(( (until_ts - $(date +%s)) / 86400 ))
   if [ "$days" -lt 10 ]; then

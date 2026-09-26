@@ -24,7 +24,7 @@ cp -p /srv/zapas/bin/app.prev /srv/zapas/bin/app
 systemctl restart zapas-api zapas-worker
 sleep 3
 systemctl is-active zapas-api zapas-worker
-curl -s https://zapas.85.198.64.102.nip.io/readyz
+curl -s https://vitalness.ru/zapas/readyz
 ```
 
 Занимает секунд десять. `app.prev` — это бинарник, работавший до
@@ -41,7 +41,7 @@ curl -s https://zapas.85.198.64.102.nip.io/readyz
 ```bash
 cp -p /srv/zapas/bin/app.prev /srv/zapas/bin/app
 systemctl restart zapas-api zapas-worker
-curl -s https://zapas.85.198.64.102.nip.io/readyz
+curl -s https://vitalness.ru/zapas/readyz
 ```
 
 Если заработало — остановитесь на этом. Схему откатывать не нужно.

@@ -32,12 +32,19 @@ type client struct {
 
 func newClient(t *testing.T) (*client, *testsupport.Fixture) {
 	t.Helper()
+	return newClientAt(t, "")
+}
+
+// newClientAt поднимает приложение с заданным публичным адресом: так
+// проверяется всё, что зависит от домена и пути, — Origin, cookie, редиректы.
+func newClientAt(t *testing.T, baseURL string) (*client, *testsupport.Fixture) {
+	t.Helper()
 	env := testsupport.Shared(t)
 	f := env.NewTenant(t, "Кофейня «Демо»")
 
 	app := api.New(api.Deps{
 		Config: config.Config{
-			App:     config.App{Env: "test", BaseURL: ""},
+			App:     config.App{Env: "test", BaseURL: baseURL},
 			Session: config.Session{TTL: testSessionTTL},
 		},
 		// Логи тестов не нужны: падения видно и так.

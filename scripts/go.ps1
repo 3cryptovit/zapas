@@ -1,6 +1,9 @@
 # Запускает go-команду в контейнере golang:1.26 — локальный тулчейн не нужен.
 #   .\scripts\go.ps1 test ./... -race
-param([Parameter(ValueFromRemainingArguments = $true)] $GoArgs)
+# Аргументы берутся из $args, а не из param с [Parameter]: такой скрипт
+# PowerShell считает расширенным и забирает себе -v как -Verbose, и
+# go test -v молча печатает только «ok».
+$GoArgs = $args
 $root = (Resolve-Path "$PSScriptRoot\..").Path
 # Интеграционные тесты ходят в postgres и redis из deploy/docker-compose.yml.
 # Если сеть не поднята, контейнер просто не найдёт хосты, а тесты пропустятся.

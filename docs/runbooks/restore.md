@@ -104,7 +104,7 @@ sudo -u postgres psql -qtA -d zapas -c "
 ```bash
 systemctl start zapas-api zapas-worker
 sleep 3
-curl -s https://zapas.85.198.64.102.nip.io/readyz
+curl -s https://vitalness.ru/zapas/readyz
 ```
 
 **7. Сказать владельцу**, на какой момент откатились и что именно

@@ -27,10 +27,10 @@ info:
     первый ответ, а не создаст второе движение (FR-10).
 
 servers:
-  - url: https://zapas.85.198.64.102.nip.io/api/v1
-    description: Прод
+  - url: https://vitalness.ru/zapas/api/v1
+    description: Прод. Префикс /zapas срезает nginx
   - url: http://localhost:8080/api/v1
-    description: Локальная разработка
+    description: Локальная разработка, напрямую в Go
 
 tags:
   - name: Аутентификация
@@ -946,7 +946,10 @@ paths:
                 properties:
                   tenant_id: { type: string, format: uuid }
                   expires_at: { type: string, format: date-time }
-                  redirect_to: { type: string }
+                  redirect_to:
+                    type: string
+                    description: Кабинет под путём публичного адреса.
+                    example: /zapas/app/
         "201":
           description: Демо создано, сессия открыта
           content:
@@ -956,7 +959,10 @@ paths:
                 properties:
                   tenant_id: { type: string, format: uuid }
                   expires_at: { type: string, format: date-time }
-                  redirect_to: { type: string }
+                  redirect_to:
+                    type: string
+                    description: Кабинет под путём публичного адреса.
+                    example: /zapas/app/
         "429":
           description: Слишком часто или достигнут предел живых демо
           content:
@@ -1028,12 +1034,15 @@ paths:
               schema:
                 type: object
                 properties:
-                  redirect_to: { type: string }
+                  redirect_to:
+                    type: string
+                    description: Кабинет под путём публичного адреса.
+                    example: /zapas/app/
         "4XX": { $ref: "#/components/responses/Problem" }
 
   /healthz:
     servers:
-      - url: https://zapas.85.198.64.102.nip.io
+      - url: https://vitalness.ru/zapas
     get:
       operationId: healthz
       tags: [Служебное]
@@ -1053,7 +1062,7 @@ paths:
 
   /readyz:
     servers:
-      - url: https://zapas.85.198.64.102.nip.io
+      - url: https://vitalness.ru/zapas
     get:
       operationId: readyz
       tags: [Служебное]

@@ -34,10 +34,13 @@ echo "==> uploading"
 $REMOTE put bin/app-linux /srv/zapas/bin/app.new
 $REMOTE sync web/dist /srv/zapas/web
 $REMOTE sync landing/dist /srv/zapas/landing
+$REMOTE put deploy/scripts/watchdog.sh /srv/zapas/bin/watchdog.sh
+$REMOTE put deploy/scripts/backup.sh /srv/zapas/bin/backup.sh
 
 echo "==> migrating and restarting"
 $REMOTE run "set -e
   chown zapas:zapas /srv/zapas/bin/app.new && chmod 755 /srv/zapas/bin/app.new
+  chmod 755 /srv/zapas/bin/watchdog.sh /srv/zapas/bin/backup.sh
   chown -R zapas:zapas /srv/zapas/web /srv/zapas/landing
   set -a; . /etc/zapas/zapas.env; set +a
   /srv/zapas/bin/app.new migrate up 2>&1 | tail -2
@@ -51,10 +54,14 @@ $REMOTE run "set -e
   systemctl is-active zapas-api zapas-worker"
 
 echo "==> smoke"
-BASE="https://zapas.$HOST.nip.io"
+DOMAIN=vitalness.ru
+BASE="https://$DOMAIN"
+# --resolve: the server itself is checked, not whatever the local DNS
+# returns. On the developer machine a VPN may answer with a fake address.
+CURL=(curl -s --max-time 20 --resolve "$DOMAIN:443:$HOST")
 
-for path in /healthz /readyz /app/ /; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$BASE$path")
+for path in /zapas/healthz /zapas/readyz /zapas/app/ /zapas/; do
+  code=$("${CURL[@]}" -o /dev/null -w '%{http_code}' "$BASE$path")
   echo "  $path: $code"
   [ "$code" = "200" ] || { echo "SMOKE FAILED"; exit 1; }
 done
@@ -63,12 +70,13 @@ done
 # screen, and /healthz knows nothing about it. So pull the asset URLs
 # out of the real HTML and fetch every one of them.
 echo "  assets:"
-assets=$(curl -s --max-time 20 "$BASE/app/"   | grep -oE '(src|href)="/app/assets/[^"]+"'   | cut -d'"' -f2 | sort -u)
+assets=$( { "${CURL[@]}" "$BASE/zapas/app/"; "${CURL[@]}" "$BASE/zapas/"; } |
+  grep -oE '(src|href)="/zapas/(app/)?assets/[^"]+"' | cut -d'"' -f2 | sort -u)
 
-[ -n "$assets" ] || { echo "SMOKE FAILED: no assets referenced by /app/"; exit 1; }
+[ -n "$assets" ] || { echo "SMOKE FAILED: no assets referenced by /zapas/app/"; exit 1; }
 
 for a in $assets; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$BASE$a")
+  code=$("${CURL[@]}" -o /dev/null -w '%{http_code}' "$BASE$a")
   echo "    $a: $code"
   [ "$code" = "200" ] || { echo "SMOKE FAILED"; exit 1; }
 done

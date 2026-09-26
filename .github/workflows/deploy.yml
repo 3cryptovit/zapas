@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: production
-      url: https://zapas.85.198.64.102.nip.io
+      url: https://vitalness.ru/zapas/
     steps:
       - uses: actions/checkout@v4
 
@@ -96,9 +96,9 @@ jobs:
 
       - name: Проверка после выката
         run: |
-          BASE=https://zapas.85.198.64.102.nip.io
+          BASE=https://vitalness.ru
 
-          for path in /healthz /readyz /app/ /; do
+          for path in /zapas/healthz /zapas/readyz /zapas/app/ /zapas/; do
             code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$BASE$path")
             echo "$path -> $code"
             # Провал здесь означает откат по docs/runbooks/rollback.md.
@@ -107,8 +107,8 @@ jobs:
 
           # Страница, отдающая 200, но не способная загрузить свои же
           # скрипты, — это белый экран, и /healthz о нём не знает.
-          assets=$(curl -s --max-time 20 "$BASE/app/" |
-            grep -oE '(src|href)="/app/assets/[^"]+"' | cut -d'"' -f2 | sort -u)
+          assets=$( { curl -s --max-time 20 "$BASE/zapas/app/"; curl -s --max-time 20 "$BASE/zapas/"; } |
+            grep -oE '(src|href)="/zapas/(app/)?assets/[^"]+"' | cut -d'"' -f2 | sort -u)
           [ -n "$assets" ]
 
           for a in $assets; do

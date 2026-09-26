@@ -7,7 +7,7 @@
  * положить в заголовок (double-submit, ADR-007).
  */
 
-const BASE = '/api/v1'
+import { API_BASE as BASE } from './paths'
 
 /** ApiError несёт разобранный ответ RFC 9457. */
 export class ApiError extends Error {

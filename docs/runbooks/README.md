@@ -15,7 +15,7 @@
 
 | | |
 |---|---|
-| Адрес | `https://zapas.85.198.64.102.nip.io` |
+| Адрес | `https://vitalness.ru/zapas/` |
 | Код приложения | `/srv/zapas/bin/app`, предыдущая версия — `app.prev` |
 | Статика | `/srv/zapas/web` (кабинет), `/srv/zapas/landing` |
 | Настройки и секреты | `/etc/zapas/zapas.env`, режим 600, владелец root |
@@ -24,7 +24,8 @@
 | Бэкапы | `/var/backups/zapas/{daily,weekly}` |
 | Сервисы | `zapas-api`, `zapas-worker` |
 | Таймеры | `zapas-backup` (04:00), `zapas-watchdog` (каждые 5 минут) |
-| nginx | `/etc/nginx/sites-available/zapas.conf` |
+| nginx | `/etc/nginx/snippets/zapas.conf` — только `location /zapas/`; сервер `vitalness.ru` — в `sites-available/vitalness`, репозиторий портфолио |
+| Сертификат | `/etc/letsencrypt/live/vitalness.ru/` |
 
 ## Важно про этот сервер
 
@@ -48,6 +49,6 @@
 
 ```bash
 systemctl is-active zapas-api zapas-worker
-curl -s https://zapas.85.198.64.102.nip.io/readyz
+curl -s https://vitalness.ru/zapas/readyz
 /srv/zapas/bin/watchdog.sh          # молчит и код 0 — всё в порядке
 ```

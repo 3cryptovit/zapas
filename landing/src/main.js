@@ -5,6 +5,9 @@
  * и заодно половина оценки Lighthouse.
  */
 
+// '/zapas/': лендинг, кабинет и API живут под одним префиксом.
+const ROOT = import.meta.env.BASE_URL
+
 const buttons = document.querySelectorAll('[data-demo]')
 const note = document.querySelector('[data-demo-note]')
 
@@ -19,7 +22,7 @@ async function openDemo() {
   if (note) note.textContent = 'Готовим демо: 40 позиций и 90 дней истории…'
 
   try {
-    const response = await fetch('/api/v1/sandbox', {
+    const response = await fetch(`${ROOT}api/v1/sandbox`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       // Пустое поле-ловушка: браузер его не трогает, бот заполнит.
@@ -29,7 +32,7 @@ async function openDemo() {
 
     if (response.ok) {
       const data = await response.json()
-      window.location.href = data.redirect_to || '/app/'
+      window.location.href = data.redirect_to || `${ROOT}app/`
       return
     }
 

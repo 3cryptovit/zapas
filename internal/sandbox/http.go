@@ -58,10 +58,12 @@ func (h *Handler) ProtectedRoutes(r chi.Router) {
 	r.Put("/sandbox/autopilot", h.handleAutopilot)
 }
 
-// appPath — куда вести посетителя. Слеш на конце обязателен: без него
-// nginx отдаёт не кабинет, а лендинг, и переход выглядит так, будто
-// кнопка не сработала.
-const appPath = "/app/"
+// appPath — куда вести посетителя: кабинет под путём публичного адреса.
+// Слеш на конце обязателен: без него nginx отдаёт не кабинет, а лендинг,
+// и переход выглядит так, будто кнопка не сработала.
+func (h *Handler) appPath() string {
+	return httpx.BasePath(h.svc.baseURL()) + "/app/"
+}
 
 type createRequest struct {
 	// Honeypot — поле-ловушка: настоящий браузер его не заполняет (§7.5).
@@ -111,7 +113,7 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		httpx.JSON(w, http.StatusOK, createResponse{
 			TenantID:   p.Tenant.ID.String(),
 			ExpiresAt:  expiresAt(p.Tenant),
-			RedirectTo: appPath,
+			RedirectTo: h.appPath(),
 		})
 		return
 	}
@@ -157,7 +159,7 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusCreated, createResponse{
 		TenantID:   created.TenantID.String(),
 		ExpiresAt:  created.ExpiresAt.Format(time.RFC3339),
-		RedirectTo: appPath,
+		RedirectTo: h.appPath(),
 	})
 }
 
@@ -223,7 +225,7 @@ func (h *Handler) handleReset(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, createResponse{
 		TenantID:   created.TenantID.String(),
 		ExpiresAt:  created.ExpiresAt.Format(time.RFC3339),
-		RedirectTo: appPath,
+		RedirectTo: h.appPath(),
 	})
 }
 
@@ -252,7 +254,7 @@ func (h *Handler) handleAutopilot(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) originAllowed(origin string) bool {
 	base := h.svc.baseURL()
-	return base == "" || strings.EqualFold(origin, base)
+	return base == "" || httpx.SameOrigin(origin, base)
 }
 
 func tooManyDemos() error {

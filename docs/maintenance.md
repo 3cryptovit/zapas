@@ -19,7 +19,7 @@
 
 ## 1. Сегодня (один раз)
 
-Система уже работает на https://zapas.85.198.64.102.nip.io. Не хватает
+Система уже работает на https://vitalness.ru/zapas/. Не хватает
 того, что делается руками владельца.
 
 ### 1.1. Положить код в git
@@ -122,7 +122,7 @@ systemctl restart zapas-api zapas-worker
 ```bash
 set -a; . /etc/zapas/zapas.env; set +a
 curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
-  -d "url=https://zapas.85.198.64.102.nip.io/telegram/webhook" \
+  -d "url=https://vitalness.ru/zapas/telegram/webhook" \
   -d "secret_token=$TELEGRAM_WEBHOOK_SECRET"
 ```
 
@@ -210,16 +210,17 @@ ZAPAS_SSH_KEY=~/.ssh/zapas scripts/deploy.sh
 его должен человек. Порядок с проверкой и откатом — в
 [runbooks/deploy.md](runbooks/deploy.md).
 
-Две ловушки, на которые уже наступали: на сервере файл называется
-`sites-available/zapas` (**без** `.conf`, в отличие от репозитория), и
-`nginx -t` перед `reload` обязателен — битый конфиг положит не только
-Zapas.
+Своего `server` у Zapas нет: `deploy/nginx/zapas.conf` — это только
+`location /zapas/…`, на сервере он лежит в
+`/etc/nginx/snippets/zapas.conf`, а подключает его сервер `vitalness.ru`
+из репозитория портфолио. `nginx -t` перед `reload` обязателен — битый
+конфиг положит не только Zapas.
 
 Никогда `systemctl restart nginx`, только `reload`.
 
 **Про `alias` в nginx.** Если добавляете локацию с `alias`, делайте её
-префиксной (`location /app/assets/`), а не регулярной
-(`location ~* ^/app/assets/`). В регулярной локации `alias`
+префиксной (`location /zapas/app/assets/`), а не регулярной
+(`location ~* ^/zapas/app/assets/`). В регулярной локации `alias`
 подставляется целиком, остаток пути не дописывается, и все файлы
 схлопываются в один каталог: `301`, затем `403`, и белый экран при
 идеальных логах.
@@ -245,7 +246,7 @@ systemctl restart zapas-api zapas-worker
 ### Проверка после выката
 
 ```bash
-curl -s https://zapas.85.198.64.102.nip.io/readyz
+curl -s https://vitalness.ru/zapas/readyz
 journalctl -u zapas-api -n 30 --no-pager | grep -i error
 ```
 
@@ -255,14 +256,20 @@ journalctl -u zapas-api -n 30 --no-pager | grep -i error
 
 ```
 ==> smoke
-  /healthz: 200
-  /readyz: 200
-  /app/: 200
-  /: 200
+  /zapas/healthz: 200
+  /zapas/readyz: 200
+  /zapas/app/: 200
+  /zapas/: 200
   assets:
-    /app/assets/index-D3fAJceI.js: 200
-    /app/assets/index-uiplkM0W.css: 200
+    /zapas/app/assets/index-CeetyMlL.css: 200
+    /zapas/app/assets/index-CnqqQ0Xm.js: 200
+    /zapas/assets/index-B_erOjyj.css: 200
+    /zapas/assets/index-Cno2G1Ch.js: 200
 ```
+
+Скрипт ходит на сервер с `--resolve vitalness.ru:443:85.198.64.102`:
+проверяется сам сервер, а не то, что ответил локальный DNS. За VPN в
+режиме fake-ip он отвечает адресом из 198.18.0.0/15.
 
 Это добавлено после того, как кабинет месяц отдавал `200` на страницу
 и `403` на все её скрипты — то есть был белым экраном, о котором
@@ -503,8 +510,8 @@ journalctl -u zapas-api -n 50 --no-pager
 Проверить то же из терминала:
 
 ```bash
-B=https://zapas.85.198.64.102.nip.io
-curl -s "$B/app/" | grep -oE '(src|href)="/app/assets/[^"]+"' | cut -d'"' -f2 |
+B=https://vitalness.ru
+curl -s "$B/zapas/app/" | grep -oE '(src|href)="/zapas/app/assets/[^"]+"' | cut -d'"' -f2 |
   while read a; do echo "$a $(curl -s -o /dev/null -w '%{http_code}' "$B$a")"; done
 ```
 
@@ -545,8 +552,10 @@ journalctl -u zapas-api --since '30 min ago' --no-pager > /tmp/incident.log
 2. **Отдельный диск под базу.** Переезд не требует изменений в коде.
 3. **Свой сервер под Zapas.** Тогда же имеет смысл вернуть Docker
    Compose, внешний мониторинг и всё, от чего пришлось отказаться.
-4. **Домен вместо nip.io.** Нужен, как только появится настоящий
-   клиент: адрес с IP внутри доверия не вызывает.
+4. **Свой сервер для vitalness.ru.** Портфолио и Zapas делят один
+   `server` в nginx: переезд Zapas на отдельную машину — это новый
+   `location /zapas/` с `proxy_pass` туда, а не смена адреса для
+   посетителей.
 
 ### Чего делать не нужно
 

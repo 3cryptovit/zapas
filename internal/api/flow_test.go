@@ -387,6 +387,44 @@ func TestДемо_ПовторныйКликВозвращаетТоЖеДемо
 	}
 }
 
+// TestДемо_ПриложениеПодПутём — Zapas живёт на vitalness.ru/zapas.
+//
+// Браузер шлёт Origin без пути, а публичный адрес путь содержит. Пока
+// они сравнивались целиком, с собственного сайта отвергалось всё: вход,
+// любое изменение и само создание демо. Кабинет открывался, но ни одна
+// кнопка не работала.
+func TestДемо_ПриложениеПодПутём(t *testing.T) {
+	c, _ := newClientAt(t, "https://vitalness.ru/zapas")
+	own := map[string]string{"Origin": "https://vitalness.ru"}
+	evil := map[string]string{"Origin": "https://evil.example"}
+
+	stranger := c.peer()
+	resp := stranger.do(http.MethodPost, "/api/v1/sandbox", map[string]any{}, evil)
+	requireStatus(t, resp, http.StatusForbidden)
+	resp.Body.Close()
+
+	resp = c.do(http.MethodPost, "/api/v1/sandbox", map[string]any{}, own)
+	requireStatus(t, resp, http.StatusCreated)
+	for _, cookie := range resp.Cookies() {
+		if cookie.Path != "/zapas/" {
+			t.Errorf("cookie %s с путём %q, ожидался /zapas/", cookie.Name, cookie.Path)
+		}
+	}
+	created := decode[map[string]any](t, resp)
+	if created["redirect_to"] != "/zapas/app/" {
+		t.Errorf("ведём не туда: %v, ожидалось /zapas/app/", created["redirect_to"])
+	}
+
+	resp = c.do(http.MethodPut, "/api/v1/sandbox/autopilot", map[string]any{"enabled": true}, own)
+	requireStatus(t, resp, http.StatusOK)
+	resp.Body.Close()
+
+	// Тот же токен и та же сессия, но запрос со стороннего сайта.
+	resp = c.do(http.MethodPut, "/api/v1/sandbox/autopilot", map[string]any{"enabled": false}, evil)
+	requireStatus(t, resp, http.StatusForbidden)
+	resp.Body.Close()
+}
+
 // TestДемо_БезСессииСоздаётНовое — обратная сторона: посетитель без
 // сессии должен получить своё демо, а не чужое.
 func TestДемо_БезСессииСоздаётНовое(t *testing.T) {

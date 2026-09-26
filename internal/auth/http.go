@@ -30,10 +30,14 @@ type Handler struct {
 	secure bool
 	// baseURL нужен для проверки Origin при защите от CSRF.
 	baseURL string
+	// cookiePath — путь приложения: на том же домене живут чужие страницы,
+	// и сессия Zapas им не нужна.
+	cookiePath string
 }
 
 func NewHandler(svc *Service, secure bool, baseURL string) *Handler {
-	return &Handler{svc: svc, secure: secure, baseURL: baseURL}
+	return &Handler{svc: svc, secure: secure, baseURL: baseURL,
+		cookiePath: httpx.BasePath(baseURL) + "/"}
 }
 
 // Routes подключает публичные маршруты: вход доступен без сессии.
@@ -232,7 +236,7 @@ func (h *Handler) checkCSRF(r *http.Request, p Principal) error {
 	// Его отсутствие допустимо — некоторые клиенты его не шлют, — а вот чужое
 	// значение означает запрос со стороннего сайта.
 	if origin := r.Header.Get("Origin"); origin != "" && h.baseURL != "" {
-		if !strings.EqualFold(origin, h.baseURL) {
+		if !httpx.SameOrigin(origin, h.baseURL) {
 			return httpx.Forbidden("Запрос пришёл со стороннего адреса.")
 		}
 	}
@@ -243,7 +247,7 @@ func (h *Handler) setCookies(w http.ResponseWriter, result LoginResult) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookie,
 		Value:    result.SessionToken,
-		Path:     "/",
+		Path:     h.cookiePath,
 		Expires:  result.ExpiresAt,
 		HttpOnly: true, // недоступна из JavaScript: XSS не уносит сессию
 		Secure:   h.secure,
@@ -252,7 +256,7 @@ func (h *Handler) setCookies(w http.ResponseWriter, result LoginResult) {
 	http.SetCookie(w, &http.Cookie{
 		Name:  CSRFCookie,
 		Value: result.CSRFToken,
-		Path:  "/",
+		Path:  h.cookiePath,
 		// Читается скриптом намеренно: фронтенд копирует значение в заголовок.
 		HttpOnly: false,
 		Expires:  result.ExpiresAt,
@@ -266,7 +270,7 @@ func (h *Handler) clearCookies(w http.ResponseWriter) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     name,
 			Value:    "",
-			Path:     "/",
+			Path:     h.cookiePath,
 			MaxAge:   -1,
 			Expires:  time.Unix(0, 0),
 			HttpOnly: name == SessionCookie,
