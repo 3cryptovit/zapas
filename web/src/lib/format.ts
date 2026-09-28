@@ -80,10 +80,34 @@ export function formatDay(day: string, today: string): string {
   const now = parseDay(today)
   if (!date || !now) return '—'
 
-  const exact = `${WEEKDAY_SHORT[date.getUTCDay()]}, ${date.getUTCDate()} ${MONTH_SHORT[date.getUTCMonth()]}`
+  const exact = formatDate(day)
   const relative = relativeDay(daysBetween(now, date))
 
   return relative ? `${exact} (${relative})` : exact
+}
+
+/** Только точная дата: «пн, 28 сен». Там, где «сегодня» и так понятно. */
+export function formatDate(day: string): string {
+  const date = parseDay(day)
+  if (!date) return '—'
+  return `${WEEKDAY_SHORT[date.getUTCDay()]}, ${date.getUTCDate()} ${MONTH_SHORT[date.getUTCMonth()]}`
+}
+
+/**
+ * Количество для поля ввода: «10.000» → «10», «1.500» → «1.5».
+ * С хвостом из нулей «10.000» по-русски читается как десять тысяч.
+ */
+export function inputQty(qty: string | undefined): string {
+  if (!qty) return ''
+  return qty.includes('.') ? qty.replace(/\.?0+$/, '') : qty
+}
+
+/** Относительная часть для конкретной даты: «через 3 дня», «вчера». */
+export function formatRelative(day: string, today: string): string {
+  const date = parseDay(day)
+  const now = parseDay(today)
+  if (!date || !now) return ''
+  return relativeDay(daysBetween(now, date))
 }
 
 /** Только относительная часть: «сегодня», «завтра», «через 3 дня». */

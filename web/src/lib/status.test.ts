@@ -3,17 +3,25 @@ import { describe, expect, it } from 'vitest'
 import { STATUS, sortItems, type Sortable } from './status'
 
 describe('STATUS', () => {
-  it('каждый статус закодирован тремя признаками, не цветом', () => {
+  it('у каждого статуса есть подпись: цвет — второй канал, не единственный', () => {
     for (const [code, presentation] of Object.entries(STATUS)) {
       expect(presentation.label, code).toBeTruthy()
-      expect(presentation.fill, code).toBeTruthy()
-      expect(presentation.weight, code).toBeTruthy()
+      expect(presentation.badge, code).toBeTruthy()
+      expect(presentation.dot, code).toBeTruthy()
     }
   })
 
-  it('заливки у всех статусов разные — иначе они сольются', () => {
-    const fills = Object.values(STATUS).map((s) => s.fill)
-    expect(new Set(fills).size).toBe(fills.length)
+  it('бейджи у всех статусов разные — иначе они сольются', () => {
+    const badges = Object.values(STATUS).map((s) => s.badge)
+    expect(new Set(badges).size).toBe(badges.length)
+  })
+
+  it('тревожные статусы красные, спокойный — зелёный', () => {
+    expect(STATUS.out_of_stock.tone).toBe('red')
+    expect(STATUS.critical.tone).toBe('red')
+    expect(STATUS.order_today.tone).toBe('amber')
+    expect(STATUS.ok.tone).toBe('green')
+    expect(STATUS.no_forecast.tone).toBe('grey')
   })
 })
 

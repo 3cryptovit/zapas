@@ -166,6 +166,9 @@ func (q Qty) CeilTo(step Qty) Qty {
 	return Qty{d: ratio.Ceil().Mul(step.d).Round(Scale)}
 }
 
+// Whole округляет до целого, половина — от нуля: штуки дробными не бывают.
+func (q Qty) Whole() Qty { return Qty{d: q.d.Round(0)} }
+
 // Sum складывает список количеств.
 func Sum(qs ...Qty) Qty {
 	total := Zero()

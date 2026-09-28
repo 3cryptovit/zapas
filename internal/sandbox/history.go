@@ -159,7 +159,7 @@ func (s *Service) generateItemHistory(
 			actual := arriving
 			// В 10% случаев привозят не ровно столько, сколько заказали.
 			if rng.Float64() < 0.10 {
-				actual = arriving.MulFloat(0.8 + rng.Float64()*0.15)
+				actual = forUnit(spec.Unit, arriving.MulFloat(0.8+rng.Float64()*0.15))
 			}
 			if actual.IsPositive() {
 				out = append(out, movement{
@@ -177,7 +177,7 @@ func (s *Service) generateItemHistory(
 
 		// Спрос дня. Если остатка не хватает — списывается только то,
 		// что есть: так появляются дни дефицита, которые прогноз исключает.
-		wanted := qty.FromInt(1).MulFloat(demand(rng, spec, dayIndex, day))
+		wanted := forUnit(spec.Unit, qty.FromInt(1).MulFloat(demand(rng, spec, dayIndex, day)))
 		used := wanted
 		if used.GreaterThan(balance) {
 			used = balance
@@ -195,7 +195,7 @@ func (s *Service) generateItemHistory(
 
 		// Списания 1–3% от расхода: порча, бой, проливы.
 		if used.IsPositive() && rng.Float64() < 0.25 {
-			lost := used.MulFloat(writeoffRate(rng))
+			lost := forUnit(spec.Unit, used.MulFloat(writeoffRate(rng)))
 			if lost.IsPositive() && !lost.GreaterThan(balance) {
 				out = append(out, movement{
 					ItemID: item.ID,

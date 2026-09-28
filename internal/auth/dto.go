@@ -33,6 +33,10 @@ type tenantDTO struct {
 	Today clock.Day `json:"today"`
 	// ExpiresAt — когда удалится демо-тенант; у рабочего пусто.
 	ExpiresAt *string `json:"expires_at,omitempty"`
+	// Autopilot — включён ли автопилот заказов в демо. Без него
+	// переключатель после перезагрузки показывал бы «выключен» при
+	// работающем автопилоте.
+	Autopilot bool `json:"autopilot"`
 	// Permissions — что доступно этой роли. Интерфейс прячет кнопки по ним,
 	// но решение всё равно принимает сервер.
 	Permissions permissionsDTO `json:"permissions"`
@@ -61,6 +65,7 @@ func meResponse(p Principal, cl clock.Clock) MeResponse {
 			Timezone:  p.Tenant.Loc().String(),
 			IsSandbox: p.Tenant.IsSandbox,
 			Today:     p.Tenant.Today(cl),
+			Autopilot: p.Tenant.Autopilot,
 			Permissions: permissionsDTO{
 				ManageCatalog:  p.Role.CanManageCatalog(),
 				ManageSettings: p.Role.CanManageSettings(),

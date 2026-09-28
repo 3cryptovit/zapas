@@ -1,10 +1,13 @@
 /**
  * Статусы позиции (§5.3).
  *
- * Интерфейс монохромный, поэтому цвета как канала нет вовсе. Статус
- * несут три независимых признака: плотность заливки, подпись и
- * насыщенность шрифта. Побочная польза — такое кодирование переживает
- * дальтонизм и чёрно-белую печать, чего §6.3 и требовал.
+ * Цвет здесь — второй канал, а не единственный: подпись есть всегда.
+ * Так статус читается и при дальтонизме, и на чёрно-белой распечатке.
+ *
+ * Палитра намеренно узкая: красный — критично, жёлтый — внимание,
+ * зелёный — в порядке, серый — второстепенное. «Закончилось» и
+ * «Критично» оба красные, но первое залито сплошным цветом: это самое
+ * тяжёлое пятно на экране, и глаз находит его первым.
  */
 
 export type ItemStatus =
@@ -14,54 +17,55 @@ export type ItemStatus =
   | 'ok'
   | 'no_forecast'
 
+export type StatusTone = 'red' | 'amber' | 'green' | 'grey'
+
 export interface StatusPresentation {
   /** Короткая подпись для таблицы и фильтров. */
   label: string
-  /**
-   * Заливка квадрата-образца. Плотность штриховки заменяет цвет:
-   * от сплошной чёрной у «закончилось» до тонкого контура у «хватает».
-   */
-  fill: string
-  /** Насыщенность подписи — третий признак. */
-  weight: string
+  /** Фон и цвет текста бейджа. */
+  badge: string
+  /** Цвет точки рядом с подписью. */
+  dot: string
+  /** Тон для счётчиков и других мест, где нужен только оттенок. */
+  tone: StatusTone
   /** Порядок сортировки: тревожные сверху (§6.1). */
   order: number
 }
 
 export const STATUS: Record<ItemStatus, StatusPresentation> = {
-  // Сплошная чёрная плашка: самое тяжёлое пятно на экране.
   out_of_stock: {
     label: 'Закончилось',
-    fill: 'fill-solid border-slate-900',
-    weight: 'font-bold',
+    badge: 'bg-red-600 text-white',
+    dot: 'bg-white',
+    tone: 'red',
     order: 0,
   },
-  // Плотная штриховка: тёмное, но уже различимое от сплошного.
   critical: {
     label: 'Критично',
-    fill: 'fill-dense border-slate-900',
-    weight: 'font-bold',
+    badge: 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-100',
+    dot: 'bg-red-500',
+    tone: 'red',
     order: 1,
   },
-  // Редкая штриховка: заметно, но не кричит.
   order_today: {
     label: 'Заказать сегодня',
-    fill: 'fill-sparse border-slate-700',
-    weight: 'font-semibold',
+    badge: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-100',
+    dot: 'bg-amber-500',
+    tone: 'amber',
     order: 2,
   },
-  // Пунктир: система честно говорит, что данных мало.
   no_forecast: {
     label: 'Нет прогноза',
-    fill: 'border-slate-400 border-dashed',
-    weight: 'font-normal',
+    badge: 'bg-slate-100 text-slate-600',
+    dot: 'bg-slate-400',
+    tone: 'grey',
     order: 3,
   },
-  // Тонкий контур: спокойное уходит на задний план.
   ok: {
     label: 'Хватает',
-    fill: 'border-slate-300',
-    weight: 'font-normal',
+    badge: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100',
+    dot: 'bg-emerald-500',
+    tone: 'green',
     order: 4,
   },
 }

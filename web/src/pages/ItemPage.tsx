@@ -1,25 +1,42 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ArrowLeftRight, ArrowRight } from 'lucide-react'
 import {
   Area,
   Bar,
   CartesianGrid,
   ComposedChart,
-  Legend,
   Line,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
+  type TooltipProps,
 } from 'recharts'
 
 import { MovementDialog } from '@/components/MovementDialog'
 import { StatusBadge } from '@/components/StatusBadge'
-import { Alert, Button, Card, Skeleton } from '@/components/ui'
-import { formatDay, formatQty, formatQtyWithUnit, unitLabel } from '@/lib/format'
+import { Alert, BackLink, Button, Card, PageHeader, SignedQty, Skeleton } from '@/components/ui'
+import { formatDate, formatDay, formatQty, formatQtyWithUnit, formatRelative } from '@/lib/format'
 import { useInsights, useMovements } from '@/lib/queries'
 import type { Insights } from '@/lib/types'
+
+/*
+ * Цвета графиков. Recharts принимает только готовые значения, поэтому они
+ * продублированы здесь из токенов styles.css — те же oklch.
+ */
+const C = {
+  brand: 'oklch(0.515 0.13 262)',
+  brandSoft: 'oklch(0.94 0.028 262)',
+  fact: 'oklch(0.715 0.011 260)',
+  excluded: 'oklch(0.925 0.005 260)',
+  grid: 'oklch(0.968 0.003 260)',
+  axis: 'oklch(0.545 0.015 260)',
+  zero: 'oklch(0.872 0.007 260)',
+  amber: 'oklch(0.77 0.12 78)',
+  green: 'oklch(0.64 0.11 158)',
+}
 
 /** Карточка позиции (§6.2). */
 export function ItemPage() {
@@ -29,103 +46,147 @@ export function ItemPage() {
   const [movementOpen, setMovementOpen] = useState(false)
 
   if (error) return <Alert kind="error">{error.message}</Alert>
-  if (isLoading || !data) return <Skeleton className="h-96 w-full" />
+  if (isLoading || !data) {
+    return (
+      <div className="space-y-8">
+        <Skeleton className="h-10 w-72" />
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-72 w-full" />
+      </div>
+    )
+  }
 
   const unit = data.item.base_unit
+  const recommended = Number(data.status.recommended_qty) > 0
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <Link to="/" className="text-sm text-slate-500 hover:underline">
-            ← К дашборду
-          </Link>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-900">{data.item.name}</h1>
-          <p className="text-sm text-slate-500">
-            {data.item.category_name ?? 'Без категории'}
-            {data.item.supplier_name ? ` · ${data.item.supplier_name}` : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <StatusBadge status={data.status.code} />
-          <Button onClick={() => setMovementOpen(true)}>Движение</Button>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="Сейчас">
-          <dl className="space-y-2 text-sm">
-            <Row label="На складе" value={formatQtyWithUnit(data.status.on_hand, unit)} />
-            <Row label="В пути" value={formatQtyWithUnit(data.status.on_order, unit)} />
-            <Row
-              label="Хватит до"
-              value={data.status.stockout_date ? formatDay(data.status.stockout_date, data.today) : '—'}
-            />
-            <Row
-              label="Рекомендуемый заказ"
-              value={
-                Number(data.status.recommended_qty) > 0
-                  ? data.status.purchase_qty && data.item.purchase_unit
-                    ? `${formatQty(data.status.purchase_qty)} ${data.item.purchase_unit} (${formatQtyWithUnit(data.status.recommended_qty, unit)})`
-                    : formatQtyWithUnit(data.status.recommended_qty, unit)
-                  : 'не нужен'
-              }
-            />
-          </dl>
-        </Card>
-
-        <Card title="Почему такой статус" className="lg:col-span-2">
-          <Explanation data={data} />
-        </Card>
-      </div>
-
-      <Card title="Точность прогноза">
-        <Accuracy accuracy={data.accuracy} />
-      </Card>
-
-      <Card title="Спрос: факт за 60 дней и прогноз на 14">
-        <DemandChart data={data} />
-      </Card>
-
-      <Card title="Остаток: проекция на 14 дней">
-        <StockChart data={data} />
-      </Card>
-
-      <Card
-        title="Последние движения"
-        action={
-          <Link to={`/movements?item=${id}`} className="text-sm text-brand-700 hover:underline">
-            Весь журнал →
-          </Link>
+    <div>
+      <PageHeader
+        back={<BackLink to="/">Дашборд</BackLink>}
+        title={data.item.name}
+        description={
+          [data.item.category_name ?? 'Без категории', data.item.supplier_name].filter(Boolean).join(' · ')
         }
-      >
-        {movements.data?.items.length ? (
-          <ul className="divide-y divide-slate-100">
-            {movements.data.items.map((m) => (
-              <li key={m.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <span>
-                  <span className="font-medium text-slate-900">{m.type_label}</span>
-                  {m.reason_label && <span className="text-slate-500"> · {m.reason_label}</span>}
-                  <span className="block text-slate-500">
-                    {new Date(m.occurred_at).toLocaleString('ru-RU')}
-                    {m.author_name ? ` · ${m.author_name}` : ''}
+        actions={
+          <>
+            <StatusBadge status={data.status.code} />
+            <Button icon={ArrowLeftRight} onClick={() => setMovementOpen(true)}>
+              Движение
+            </Button>
+          </>
+        }
+      />
+
+      <div className="space-y-6">
+        {/* Главные числа: одной строкой, от наличия к действию. */}
+        <section className="grid grid-cols-2 rounded-xl border border-slate-200 bg-white shadow-card lg:grid-cols-4">
+          <Metric label="На складе" value={formatQtyWithUnit(data.status.on_hand, unit)} />
+          <Metric
+            label="В пути"
+            value={Number(data.status.on_order) > 0 ? formatQtyWithUnit(data.status.on_order, unit) : '—'}
+            muted={Number(data.status.on_order) <= 0}
+          />
+          <Metric
+            label="Хватит до"
+            value={data.status.stockout_date ? formatDate(data.status.stockout_date) : '—'}
+            hint={data.status.stockout_date ? formatRelative(data.status.stockout_date, data.today) || undefined : undefined}
+            muted={!data.status.stockout_date}
+          />
+          <Metric
+            label="Рекомендуемый заказ"
+            value={
+              recommended
+                ? data.status.purchase_qty && data.item.purchase_unit
+                  ? `${formatQty(data.status.purchase_qty)} ${data.item.purchase_unit}`
+                  : formatQtyWithUnit(data.status.recommended_qty, unit)
+                : 'не нужен'
+            }
+            hint={
+              recommended && data.status.purchase_qty && data.item.purchase_unit
+                ? formatQtyWithUnit(data.status.recommended_qty, unit)
+                : undefined
+            }
+            muted={!recommended}
+            accent={recommended}
+          />
+        </section>
+
+        <div className="grid gap-6 lg:grid-cols-3">
+          <Card title="Почему такой статус" className="lg:col-span-2">
+            <Explanation data={data} />
+          </Card>
+          <Card title="Точность прогноза">
+            <Accuracy accuracy={data.accuracy} />
+          </Card>
+        </div>
+
+        <Card
+          title="Спрос"
+          description="Факт за 60 дней и прогноз на 14"
+          action={
+            <Legend
+              items={[
+                { swatch: <BarSwatch color={C.fact} />, label: 'Факт' },
+                { swatch: <BarSwatch color={C.excluded} />, label: 'Нет данных или дефицит' },
+                { swatch: <LineSwatch color={C.brand} />, label: 'Прогноз' },
+                { swatch: <AreaSwatch color={C.brandSoft} />, label: 'Разброс ±z·σ' },
+              ]}
+            />
+          }
+        >
+          <DemandChart data={data} />
+        </Card>
+
+        <Card
+          title="Остаток"
+          description="Проекция на 14 дней"
+          action={
+            <Legend
+              items={[
+                { swatch: <LineSwatch color={C.brand} />, label: 'Остаток' },
+                { swatch: <BarSwatch color={C.green} />, label: 'Поставка' },
+                { swatch: <LineSwatch color={C.amber} dashed />, label: 'Страховой запас' },
+              ]}
+            />
+          }
+        >
+          <StockChart data={data} />
+        </Card>
+
+        <Card
+          flush
+          title="Последние движения"
+          action={
+            <Link
+              to={`/movements?item=${id}`}
+              className="inline-flex items-center gap-1 text-[13px] font-medium text-brand-700 hover:text-brand-600"
+            >
+              Весь журнал
+              <ArrowRight aria-hidden="true" className="size-3.5" strokeWidth={2} />
+            </Link>
+          }
+        >
+          {movements.data?.items.length ? (
+            <ul className="divide-y divide-slate-100">
+              {movements.data.items.map((m) => (
+                <li key={m.id} className="flex items-center justify-between gap-4 px-5 py-3.5 sm:px-6">
+                  <span className="min-w-0">
+                    <span className="text-sm font-medium text-slate-900">{m.type_label}</span>
+                    {m.reason_label && <span className="text-sm text-slate-500"> · {m.reason_label}</span>}
+                    <span className="block text-[13px] text-slate-500">
+                      {new Date(m.occurred_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' })}
+                      {m.author_name ? ` · ${m.author_name}` : ''}
+                    </span>
                   </span>
-                </span>
-                <span
-                  className={`tabular-nums font-medium ${
-                    Number(m.qty) < 0 ? 'text-red-700' : 'text-emerald-700'
-                  }`}
-                >
-                  {Number(m.qty) > 0 ? '+' : ''}
-                  {formatQty(m.qty)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="py-4 text-sm text-slate-500">Движений пока нет.</p>
-        )}
-      </Card>
+                  <SignedQty qty={m.qty} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-5 pb-6 text-sm text-slate-500 sm:px-6">Движений пока нет.</p>
+          )}
+        </Card>
+      </div>
 
       <MovementDialog
         item={
@@ -144,11 +205,31 @@ export function ItemPage() {
   )
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+/** Одно ключевое число: подпись → значение → пояснение. */
+function Metric({
+  label,
+  value,
+  hint,
+  muted = false,
+  accent = false,
+}: {
+  label: string
+  value: string
+  hint?: string
+  muted?: boolean
+  accent?: boolean
+}) {
   return (
-    <div className="flex justify-between gap-3">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="text-right font-medium text-slate-900">{value}</dd>
+    <div className="border-slate-100 p-5 sm:p-6 [&:nth-child(-n+2)]:border-b lg:[&:nth-child(-n+2)]:border-b-0 [&:nth-child(odd)]:border-r lg:[&:not(:last-child)]:border-r">
+      <p className="text-[13px] text-slate-500">{label}</p>
+      <p
+        className={`mt-2 text-xl leading-tight font-semibold tracking-tight tabular-nums sm:text-2xl ${
+          muted ? 'text-slate-400' : accent ? 'text-brand-700' : 'text-slate-900'
+        }`}
+      >
+        {value}
+      </p>
+      {hint && <p className="mt-1 text-[13px] text-slate-500 tabular-nums">{hint}</p>}
     </div>
   )
 }
@@ -163,11 +244,10 @@ function Explanation({ data }: { data: Insights }) {
 
   if (data.accuracy.model === 'M0') {
     return (
-      <p className="text-sm text-slate-700">
-        Данных пока мало — меньше недели, поэтому прогноз не строится.
-        Статус считается по ручному минимальному остатку:{' '}
-        <strong>{formatQtyWithUnit(data.item.manual_min_qty, unit)}</strong>.
-        Сейчас на складе {formatQtyWithUnit(data.status.on_hand, unit)}.
+      <p className="text-sm leading-relaxed text-slate-600">
+        Данных пока мало — меньше недели, поэтому прогноз не строится. Статус считается по ручному
+        минимальному остатку: <Num>{formatQtyWithUnit(data.item.manual_min_qty, unit)}</Num>. Сейчас на складе{' '}
+        <Num>{formatQtyWithUnit(data.status.on_hand, unit)}</Num>.
       </p>
     )
   }
@@ -175,29 +255,27 @@ function Explanation({ data }: { data: Insights }) {
   const shortfall = Number(e.shortfall)
 
   return (
-    <div className="space-y-2 text-sm text-slate-700">
+    <div className="space-y-3 text-sm leading-relaxed text-slate-600">
       <p>
-        Сейчас <strong>{formatQtyWithUnit(e.on_hand, unit)}</strong>, в пути{' '}
-        <strong>{formatQtyWithUnit(e.on_order, unit)}</strong>.
+        Сейчас <Num>{formatQtyWithUnit(e.on_hand, unit)}</Num>, в пути <Num>{formatQtyWithUnit(e.on_order, unit)}</Num>.
         {e.d2 && (
           <>
             {' '}
             До поставки по следующему заказу ({formatDay(e.d2, data.today)}) нужно{' '}
-            <strong>{formatQtyWithUnit(e.need_until_d2, unit)}</strong> плюс страховой запас{' '}
-            <strong>{formatQtyWithUnit(e.safety_stock, unit)}</strong>.
+            <Num>{formatQtyWithUnit(e.need_until_d2, unit)}</Num> плюс страховой запас{' '}
+            <Num>{formatQtyWithUnit(e.safety_stock, unit)}</Num>.
           </>
         )}
       </p>
 
       {shortfall > 0 ? (
-        <p>
-          Не хватает <strong>{formatQtyWithUnit(e.shortfall, unit)}</strong> →{' '}
-          заказать{' '}
-          <strong>
+        <p className="rounded-lg bg-brand-50 px-4 py-3 text-slate-700">
+          Не хватает <Num>{formatQtyWithUnit(e.shortfall, unit)}</Num> — заказать{' '}
+          <Num>
             {data.status.purchase_qty && data.item.purchase_unit
               ? `${formatQty(data.status.purchase_qty)} ${data.item.purchase_unit} (${formatQtyWithUnit(e.recommended_qty, unit)})`
               : formatQtyWithUnit(e.recommended_qty, unit)}
-          </strong>
+          </Num>
           .
         </p>
       ) : e.can_wait ? (
@@ -209,42 +287,55 @@ function Explanation({ data }: { data: Insights }) {
         <p>Запаса хватает: целевой уровень {formatQtyWithUnit(e.target_level, unit)} уже покрыт.</p>
       )}
 
-      <p className="text-slate-500">
-        Страховой запас = z · σ · √n, где z = {e.z.toFixed(2)} (уровень сервиса{' '}
-        {data.item.service_level}%), σ = {e.sigma.toFixed(2)}, n = {e.days_to_d2} дн.
+      <p className="border-t border-slate-100 pt-3 text-[13px] text-slate-500">
+        Страховой запас = z · σ · √n, где z = {e.z.toFixed(2)} (уровень сервиса {data.item.service_level}%), σ ={' '}
+        {e.sigma.toFixed(2)}, n = {e.days_to_d2} дн.
       </p>
     </div>
   )
 }
 
+function Num({ children }: { children: ReactNode }) {
+  return <span className="font-semibold text-slate-900 tabular-nums">{children}</span>
+}
+
 function Accuracy({ accuracy }: { accuracy: Insights['accuracy'] }) {
   if (accuracy.model === 'M0') {
     return (
-      <p className="text-sm text-slate-600">
-        Модель не построена: нужно не меньше 7 дней данных. Сейчас накоплено{' '}
-        {accuracy.days_with_data}.
+      <p className="text-sm leading-relaxed text-slate-600">
+        Модель не построена: нужно не меньше 7 дней данных. Сейчас накоплено {accuracy.days_with_data}.
       </p>
     )
   }
 
   const bias = Math.round(accuracy.bias * 100)
+  const pct = Math.round(accuracy.accuracy * 100)
 
   return (
-    <p className="text-sm text-slate-700">
-      <strong className="text-lg">{Math.round(accuracy.accuracy * 100)}%</strong> за{' '}
-      {accuracy.window_days} дней, модель {accuracy.model}
+    <div>
+      <p className="text-4xl leading-none font-semibold tracking-tight text-slate-900 tabular-nums">{pct}%</p>
+      <p className="mt-2 text-sm text-slate-600">
+        за {accuracy.window_days} дней, модель {accuracy.model}
+      </p>
       {bias !== 0 && (
-        <>
-          , {bias > 0 ? 'завышает' : 'занижает'} на {Math.abs(bias)}%
-        </>
+        <p className="text-sm text-slate-600">
+          {bias > 0 ? 'завышает' : 'занижает'} на {Math.abs(bias)}%
+        </p>
       )}
-      .
-      <span className="mt-1 block text-slate-500">
+      <p className="mt-4 border-t border-slate-100 pt-3 text-[13px] text-slate-500">
         Точность = 1 − WAPE. Данных в ряду: {accuracy.days_with_data} дней.
-      </span>
-    </p>
+      </p>
+    </div>
   )
 }
+
+/* ——— Графики ——— */
+
+const axisProps = {
+  tick: { fontSize: 12, fill: C.axis },
+  axisLine: false,
+  tickLine: false,
+} as const
 
 /** DemandChart — столбцы факта и линия прогноза с полосой ±z·σ (§6.2). */
 function DemandChart({ data }: { data: Insights }) {
@@ -268,21 +359,24 @@ function DemandChart({ data }: { data: Insights }) {
   ]
 
   return (
-    <div className="h-64 w-full">
+    <div className="h-60 w-full sm:h-64">
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={points} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-          <CartesianGrid strokeDasharray="2 4" stroke="#DBD7D2" />
-          <XAxis dataKey="day" tickFormatter={shortDay} tick={{ fontSize: 11 }} minTickGap={24} />
-          <YAxis tick={{ fontSize: 11 }} />
-          <Tooltip
-            formatter={(value: unknown, name: string) => [formatNumber(value), chartLabel(name)]}
-            labelFormatter={(day: string) => formatDay(day, data.today)}
+        <ComposedChart data={points} margin={{ top: 8, right: 4, bottom: 0, left: -16 }} barCategoryGap={1}>
+          <CartesianGrid vertical={false} stroke={C.grid} />
+          <XAxis dataKey="day" tickFormatter={shortDay} minTickGap={32} {...axisProps} />
+          <YAxis width={48} {...axisProps} />
+          <Tooltip content={<ChartTooltip today={data.today} />} cursor={{ fill: C.grid }} />
+          <Area dataKey="band" stroke="none" fill={C.brandSoft} fillOpacity={1} name="band" isAnimationActive={false} />
+          <Bar dataKey="fact" fill={C.fact} radius={[2, 2, 0, 0]} name="fact" isAnimationActive={false} />
+          <Bar dataKey="excluded" fill={C.excluded} radius={[2, 2, 0, 0]} name="excluded" isAnimationActive={false} />
+          <Line
+            dataKey="forecast"
+            stroke={C.brand}
+            strokeWidth={1.75}
+            dot={false}
+            name="forecast"
+            isAnimationActive={false}
           />
-          <Legend formatter={chartLabel} />
-          <Area dataKey="band" stroke="none" fill="#2B2A28" fillOpacity={0.08} name="band" />
-          <Bar dataKey="fact" fill="#2B2A28" name="fact" />
-          <Bar dataKey="excluded" fill="#D2CEC9" name="excluded" />
-          <Line dataKey="forecast" stroke="#2B2A28" strokeWidth={2} strokeDasharray="5 3" dot={false} name="forecast" />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -300,28 +394,35 @@ function StockChart({ data }: { data: Insights }) {
   const safety = Number(data.status.safety_stock)
 
   return (
-    <div className="h-64 w-full">
+    <div className="h-60 w-full sm:h-64">
       <ResponsiveContainer width="100%" height="100%">
-        <ComposedChart data={points} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-          <CartesianGrid strokeDasharray="2 4" stroke="#DBD7D2" />
-          <XAxis dataKey="day" tickFormatter={shortDay} tick={{ fontSize: 11 }} minTickGap={24} />
-          <YAxis tick={{ fontSize: 11 }} />
-          <Tooltip
-            formatter={(value: unknown, name: string) => [formatNumber(value), chartLabel(name)]}
-            labelFormatter={(day: string) => formatDay(day, data.today)}
-          />
-          <Legend formatter={chartLabel} />
+        <ComposedChart data={points} margin={{ top: 8, right: 4, bottom: 0, left: -16 }}>
+          <CartesianGrid vertical={false} stroke={C.grid} />
+          <XAxis dataKey="day" tickFormatter={shortDay} minTickGap={32} {...axisProps} />
+          <YAxis width={48} {...axisProps} />
+          <Tooltip content={<ChartTooltip today={data.today} />} cursor={{ stroke: C.zero }} />
+          <ReferenceLine y={0} stroke={C.zero} />
           {safety > 0 && (
             <ReferenceLine
               y={safety}
-              stroke="#2B2A28"
+              stroke={C.amber}
               strokeDasharray="4 4"
-              label={{ value: 'страховой запас', fontSize: 11, position: 'insideTopRight' }}
+              strokeWidth={1.5}
+              // Проекция часто уходит в минус, и ось без этого обрезала
+              // бы линию запаса — самую полезную на графике.
+              ifOverflow="extendDomain"
             />
           )}
-          <ReferenceLine y={0} stroke="#111111" strokeWidth={2} />
-          <Line dataKey="stock" stroke="#2B2A28" strokeWidth={2} dot={false} name="stock" />
-          <Bar dataKey="incoming" fill="#FFFFFF" stroke="#2B2A28" strokeWidth={1} name="incoming" />
+          <Bar dataKey="incoming" fill={C.green} barSize={6} radius={[2, 2, 0, 0]} name="incoming" isAnimationActive={false} />
+          <Line
+            dataKey="stock"
+            stroke={C.brand}
+            strokeWidth={1.75}
+            dot={false}
+            activeDot={{ r: 3.5, strokeWidth: 0 }}
+            name="stock"
+            isAnimationActive={false}
+          />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -337,8 +438,53 @@ const chartLabels: Record<string, string> = {
   incoming: 'Поставка',
 }
 
-function chartLabel(name: string): string {
-  return chartLabels[name] ?? name
+function ChartTooltip({ active, payload, label, today }: TooltipProps<number, string> & { today: string }) {
+  if (!active || !payload?.length) return null
+  const rows = payload.filter((p) => p.value !== null && p.value !== undefined)
+  if (!rows.length) return null
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] shadow-pop">
+      <p className="mb-1 font-medium text-slate-900">{formatDay(String(label), today)}</p>
+      {rows.map((p) => (
+        <p key={String(p.dataKey)} className="flex justify-between gap-6 text-slate-600">
+          <span>{chartLabels[String(p.dataKey)] ?? p.dataKey}</span>
+          <span className="font-medium text-slate-900 tabular-nums">{formatNumber(p.value)}</span>
+        </p>
+      ))}
+    </div>
+  )
+}
+
+function Legend({ items }: { items: { swatch: ReactNode; label: string }[] }) {
+  return (
+    <ul className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-slate-500">
+      {items.map((item) => (
+        <li key={item.label} className="flex items-center gap-1.5">
+          {item.swatch}
+          {item.label}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function BarSwatch({ color }: { color: string }) {
+  return <span aria-hidden="true" className="inline-block size-2.5 rounded-[2px]" style={{ background: color }} />
+}
+
+function AreaSwatch({ color }: { color: string }) {
+  return <span aria-hidden="true" className="inline-block h-2.5 w-3.5 rounded-[2px]" style={{ background: color }} />
+}
+
+function LineSwatch({ color, dashed = false }: { color: string; dashed?: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block w-3.5"
+      style={{ borderTop: `2px ${dashed ? 'dashed' : 'solid'} ${color}` }}
+    />
+  )
 }
 
 function shortDay(day: string): string {
@@ -352,5 +498,3 @@ function formatNumber(value: unknown): string {
   }
   return typeof value === 'number' ? formatQty(value) : '—'
 }
-
-void unitLabel

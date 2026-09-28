@@ -135,7 +135,20 @@ function safeParse(text: string): unknown {
   }
 }
 
-/** newIdempotencyKey — ключ на одну попытку отправки формы (FR-10). */
+/**
+ * newIdempotencyKey — ключ на одну попытку отправки формы (FR-10).
+ *
+ * crypto.randomUUID есть только в защищённом контексте и в браузерах
+ * новее Safari 15.4. Без запасного пути запись движения и заказ падали
+ * с «crypto.randomUUID is not a function» — например, при открытии по
+ * http. getRandomValues доступен везде и даёт тот же UUID v4.
+ */
 export function newIdempotencyKey(): string {
-  return crypto.randomUUID()
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+
+  const b = crypto.getRandomValues(new Uint8Array(16))
+  b[6] = (b[6]! & 0x0f) | 0x40 // версия 4
+  b[8] = (b[8]! & 0x3f) | 0x80 // вариант RFC 4122
+  const hex = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }

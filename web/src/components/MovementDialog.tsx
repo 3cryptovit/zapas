@@ -79,21 +79,29 @@ export function MovementDialog({ item, onClose }: Props) {
   }
 
   return (
-    <Modal open title={item.name} onClose={onClose}>
+    <Modal
+      open
+      title={item.name}
+      description={`На складе ${formatQtyWithUnit(item.on_hand, item.base_unit)}`}
+      onClose={onClose}
+    >
       <form onSubmit={submit} className="space-y-4">
-        <p className="text-sm text-slate-600">
-          Сейчас на складе {formatQtyWithUnit(item.on_hand, item.base_unit)}
-        </p>
-
-        <Field label="Тип движения">
-          <Select value={type} onChange={(e) => setType(e.target.value as MovementType)}>
-            {(Object.keys(typeLabels) as MovementType[]).map((value) => (
-              <option key={value} value={value}>
-                {typeLabels[value]}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <div role="radiogroup" aria-label="Тип движения" className="grid grid-cols-3 gap-1 rounded-lg bg-slate-100 p-1">
+          {(Object.keys(typeLabels) as MovementType[]).map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={type === value}
+              onClick={() => setType(value)}
+              className={`min-h-9 rounded-md text-[13px] font-medium transition-colors ${
+                type === value ? 'bg-white text-slate-900 shadow-card' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {typeLabels[value]}
+            </button>
+          ))}
+        </div>
 
         <Field
           label={`Количество, ${item.base_unit === 'kg' ? 'кг' : item.base_unit === 'l' ? 'л' : 'шт'}`}
@@ -123,7 +131,7 @@ export function MovementDialog({ item, onClose }: Props) {
           </Field>
         )}
 
-        <Field label="Комментарий" hint="Необязательно">
+        <Field label="Комментарий" hint="Необязательно — видно в журнале">
           <Input value={comment} onChange={(e) => setComment(e.target.value)} />
         </Field>
 
@@ -139,7 +147,7 @@ export function MovementDialog({ item, onClose }: Props) {
           </Alert>
         )}
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>
             Отмена
           </Button>

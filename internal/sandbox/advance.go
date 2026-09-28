@@ -200,7 +200,7 @@ func (s *Simulator) receiveArrivals(ctx context.Context, tn tenant.Tenant, owner
 			for _, l := range order.Lines {
 				actual = append(actual, orders.ReceiveLine{
 					ItemID: l.ItemID,
-					Qty:    l.QtyOrdered.MulFloat(0.85 + rng.Float64()*0.1),
+					Qty:    forUnit(l.BaseUnit, l.QtyOrdered.MulFloat(0.85+rng.Float64()*0.1)),
 				})
 			}
 		}
@@ -245,7 +245,7 @@ func (s *Simulator) consumeDay(ctx context.Context, tn tenant.Tenant, owner uuid
 			}
 
 			rng := newRNG(tenantSeed(tn), uint64(i)*1000+uint64(dayIndex))
-			wanted := qty.FromInt(1).MulFloat(demand(rng, spec, dayIndex, today))
+			wanted := forUnit(spec.Unit, qty.FromInt(1).MulFloat(demand(rng, spec, dayIndex, today)))
 
 			onHand, err := q.LockBalance(ctx, sqlc.LockBalanceParams{
 				WarehouseID: warehouse.ID, ItemID: row.ID,

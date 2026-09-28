@@ -111,3 +111,21 @@ func TestJSON_КоличестваСтроками(t *testing.T) {
 		t.Fatalf("Unmarshal числа = %s, want 2.250", in.Qty)
 	}
 }
+
+// TestWhole — штуки в демо: «239,729 круассана» на дашборде читаются как
+// ошибка системы, а не как прогноз.
+func TestWhole(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"239.729", "240.000"},
+		{"2.5", "3.000"},
+		{"2.499", "2.000"},
+		{"0.4", "0.000"},
+		{"7", "7.000"},
+		{"-1.5", "-2.000"},
+	}
+	for _, tc := range tests {
+		if got := qty.MustParse(tc.in).Whole().String(); got != tc.want {
+			t.Errorf("Whole(%s) = %s, want %s", tc.in, got, tc.want)
+		}
+	}
+}

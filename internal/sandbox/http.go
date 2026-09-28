@@ -19,30 +19,40 @@ import (
 const (
 	// PerIPPerHour — не больше пяти песочниц с одного адреса в час.
 	PerIPPerHour = 5
-	// MaxActive — сверх этого новые не создаются, лендинг показывает видео.
+	// MaxActive — сверх этого новые не создаются.
 	MaxActive = 300
 )
+
+// Limits — ограничения создания демо из конфига.
+type Limits struct {
+	MaxActive int
+	PerIP     int
+	// Disabled выключает создание демо совсем: аварийный рубильник из
+	// раннбука. Отдельный флаг, потому что ноль в MaxActive означает
+	// «по умолчанию», и SANDBOX_MAX_ACTIVE=0 демо не выключал.
+	Disabled bool
+}
 
 // Handler — HTTP-обвязка песочницы.
 type Handler struct {
 	svc       *Service
 	simulator *Simulator
+	guide     *Guide
 	auth      *auth.Handler
 	limiter   *ratelimit.Limiter
-	maxActive int
-	perIP     int
+	limits    Limits
 }
 
-func NewHandler(svc *Service, sim *Simulator, authHandler *auth.Handler, limiter *ratelimit.Limiter, maxActive, perIP int) *Handler {
-	if maxActive <= 0 {
-		maxActive = MaxActive
+func NewHandler(svc *Service, sim *Simulator, guide *Guide, authHandler *auth.Handler, limiter *ratelimit.Limiter, limits Limits) *Handler {
+	if limits.MaxActive <= 0 {
+		limits.MaxActive = MaxActive
 	}
-	if perIP <= 0 {
-		perIP = PerIPPerHour
+	if limits.PerIP <= 0 {
+		limits.PerIP = PerIPPerHour
 	}
 	return &Handler{
-		svc: svc, simulator: sim, auth: authHandler, limiter: limiter,
-		maxActive: maxActive, perIP: perIP,
+		svc: svc, simulator: sim, guide: guide, auth: authHandler, limiter: limiter,
+		limits: limits,
 	}
 }
 
@@ -56,6 +66,8 @@ func (h *Handler) ProtectedRoutes(r chi.Router) {
 	r.Post("/sandbox/advance", h.handleAdvance)
 	r.Post("/sandbox/reset", h.handleReset)
 	r.Put("/sandbox/autopilot", h.handleAutopilot)
+	r.Get("/sandbox/guide", h.handleGuide)
+	r.Post("/sandbox/guide/{step}/fill", h.handleFill)
 }
 
 // appPath — куда вести посетителя: кабинет под путём публичного адреса.
@@ -65,20 +77,54 @@ func (h *Handler) appPath() string {
 	return httpx.BasePath(h.svc.baseURL()) + "/app/"
 }
 
+// Режимы демо: готовое с историей или пустое для прохождения по шагам.
+const (
+	ModeReady  = "ready"
+	ModeGuided = "guided"
+)
+
 type createRequest struct {
 	// Honeypot — поле-ловушка: настоящий браузер его не заполняет (§7.5).
 	Honeypot string `json:"website,omitempty"`
+	Mode     string `json:"mode,omitempty"`
+}
+
+// loginDTO — вход в пошаговое демо. Пароль отдаётся один раз: в базе
+// лежит только хеш.
+type loginDTO struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type createResponse struct {
 	TenantID  string `json:"tenant_id"`
 	ExpiresAt string `json:"expires_at"`
 	// RedirectTo — куда вести посетителя после создания.
-	RedirectTo string `json:"redirect_to"`
+	RedirectTo string    `json:"redirect_to"`
+	Login      *loginDTO `json:"login,omitempty"`
+}
+
+func validMode(mode string) error {
+	switch mode {
+	case "", ModeReady, ModeGuided:
+		return nil
+	default:
+		return httpx.Invalid(httpx.FieldError{
+			Field: "mode", Message: "Режим демо: ready или guided.",
+		})
+	}
 }
 
 func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	if h.limits.Disabled {
+		metrics.SandboxCreated.WithLabelValues("disabled").Inc()
+		httpx.Error(w, r, httpx.New(http.StatusServiceUnavailable, "sandbox-disabled",
+			"Демо временно выключено",
+			"Демо сейчас недоступно. Попробуйте позже."))
+		return
+	}
 
 	var req createRequest
 	if r.ContentLength > 0 {
@@ -92,6 +138,10 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		// лимита: подсказывать, что ловушка сработала, незачем.
 		metrics.SandboxCreated.WithLabelValues("bot").Inc()
 		httpx.Error(w, r, tooManyDemos())
+		return
+	}
+	if err := validMode(req.Mode); err != nil {
+		httpx.Error(w, r, err)
 		return
 	}
 
@@ -119,20 +169,20 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ip := clientIP(r)
-	res, err := h.limiter.Allow(ctx, "sandbox:ip:"+ip, h.perIP, time.Hour)
+	res, err := h.limiter.Allow(ctx, "sandbox:ip:"+ip, h.limits.PerIP, time.Hour)
 	if err == nil && !res.Allowed {
 		metrics.SandboxCreated.WithLabelValues("rate_limited").Inc()
 		httpx.Error(w, r, tooManyDemos())
 		return
 	}
 
-	// Потолок активных демо: сверх него лендинг показывает видео (§7.5).
+	// Потолок одновременно живых демо (§7.5).
 	active, err := h.svc.ActiveCount(ctx)
 	if err != nil {
 		httpx.Error(w, r, err)
 		return
 	}
-	if active >= h.maxActive {
+	if active >= h.limits.MaxActive {
 		metrics.SandboxCreated.WithLabelValues("capacity").Inc()
 		httpx.Error(w, r, httpx.New(http.StatusServiceUnavailable, "sandbox-busy",
 			"Демо временно недоступно",
@@ -140,7 +190,7 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := h.svc.Create(ctx, 0)
+	created, login, err := h.create(r, req.Mode)
 	if err != nil {
 		metrics.SandboxCreated.WithLabelValues("error").Inc()
 		httpx.Error(w, r, err)
@@ -149,18 +199,30 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 	metrics.SandboxCreated.WithLabelValues("ok").Inc()
 
 	// Сессия заводится сразу: посетитель попадает в кабинет одной кнопкой.
-	login, err := h.auth.StartSessionFor(ctx, w, created.OwnerID, created.TenantID, r.UserAgent())
-	if err != nil {
+	if _, err := h.auth.StartSessionFor(ctx, w, created.OwnerID, created.TenantID, r.UserAgent()); err != nil {
 		httpx.Error(w, r, err)
 		return
 	}
-	_ = login
 
 	httpx.JSON(w, http.StatusCreated, createResponse{
 		TenantID:   created.TenantID.String(),
 		ExpiresAt:  created.ExpiresAt.Format(time.RFC3339),
 		RedirectTo: h.appPath(),
+		Login:      login,
 	})
+}
+
+// create заводит демо нужного режима.
+func (h *Handler) create(r *http.Request, mode string) (Created, *loginDTO, error) {
+	if mode == ModeGuided {
+		g, err := h.svc.CreateGuided(r.Context())
+		if err != nil {
+			return Created{}, nil, err
+		}
+		return g.Created, &loginDTO{Email: g.Email, Password: g.Password}, nil
+	}
+	created, err := h.svc.Create(r.Context(), 0)
+	return created, nil, err
 }
 
 // liveSandbox — демо ещё не истекло. Уборщик ходит раз в час, поэтому
@@ -203,6 +265,10 @@ func (h *Handler) handleAdvance(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, result)
 }
 
+type resetRequest struct {
+	Mode string `json:"mode,omitempty"`
+}
+
 func (h *Handler) handleReset(w http.ResponseWriter, r *http.Request) {
 	principal := auth.MustFromContext(r.Context())
 	if !principal.Tenant.IsSandbox {
@@ -210,7 +276,30 @@ func (h *Handler) handleReset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	created, err := h.svc.Reset(r.Context(), principal.Tenant.ID, principal.Tenant.Seed)
+	var req resetRequest
+	if r.ContentLength > 0 {
+		if err := httpx.Decode(w, r, &req); err != nil {
+			httpx.Error(w, r, err)
+			return
+		}
+	}
+	if err := validMode(req.Mode); err != nil {
+		httpx.Error(w, r, err)
+		return
+	}
+
+	var (
+		created Created
+		login   *loginDTO
+		err     error
+	)
+	if req.Mode == ModeGuided {
+		var g CreatedGuided
+		g, err = h.svc.ResetGuided(r.Context(), principal.Tenant.ID)
+		created, login = g.Created, &loginDTO{Email: g.Email, Password: g.Password}
+	} else {
+		created, err = h.svc.Reset(r.Context(), principal.Tenant.ID, principal.Tenant.Seed)
+	}
 	if err != nil {
 		httpx.Error(w, r, err)
 		return
@@ -226,6 +315,7 @@ func (h *Handler) handleReset(w http.ResponseWriter, r *http.Request) {
 		TenantID:   created.TenantID.String(),
 		ExpiresAt:  created.ExpiresAt.Format(time.RFC3339),
 		RedirectTo: h.appPath(),
+		Login:      login,
 	})
 }
 
@@ -252,6 +342,28 @@ func (h *Handler) handleAutopilot(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]any{"autopilot": req.Enabled})
 }
 
+func (h *Handler) handleGuide(w http.ResponseWriter, r *http.Request) {
+	principal := auth.MustFromContext(r.Context())
+
+	state, err := h.guide.State(r.Context(), principal.Tenant)
+	if err != nil {
+		httpx.Error(w, r, toHTTP(err))
+		return
+	}
+	httpx.JSON(w, http.StatusOK, state)
+}
+
+func (h *Handler) handleFill(w http.ResponseWriter, r *http.Request) {
+	principal := auth.MustFromContext(r.Context())
+
+	result, err := h.guide.Fill(r.Context(), principal.Tenant, StepID(chi.URLParam(r, "step")))
+	if err != nil {
+		httpx.Error(w, r, toHTTP(err))
+		return
+	}
+	httpx.JSON(w, http.StatusOK, result)
+}
+
 func (h *Handler) originAllowed(origin string) bool {
 	base := h.svc.baseURL()
 	return base == "" || httpx.SameOrigin(origin, base)
@@ -270,8 +382,9 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
-// toHTTP переводит ошибки симулятора в ответы RFC 9457.
+// toHTTP переводит ошибки симулятора и шагов в ответы RFC 9457.
 func toHTTP(err error) error {
+	var order *StepOrderError
 	switch {
 	case errors.Is(err, ErrNotSandbox):
 		return httpx.Forbidden("Это действие доступно только в демо.")
@@ -282,6 +395,26 @@ func toHTTP(err error) error {
 	case errors.Is(err, ErrHorizonLimit):
 		return httpx.Conflict("horizon-limit", "Достигнут предел демо",
 			"Дальше промотать нельзя. Сбросьте демо, чтобы начать заново.")
+	case errors.Is(err, ErrUnknownStep):
+		return httpx.NotFound()
+	case errors.As(err, &order):
+		return httpx.Conflict("step-order", "Сначала предыдущий шаг",
+			"Сначала — шаг «"+stepTitles[order.Need]+"»: без него этот не заполнить.")
+	case errors.Is(err, ErrNotFillable):
+		return httpx.Conflict("not-fillable", "Этот шаг — руками",
+			"У этого шага нет тестовых данных: его делают кнопками в интерфейсе.")
+	case errors.Is(err, ErrFillBusy):
+		return httpx.Conflict("fill-busy", "Шаг уже заполняется",
+			"Тестовые данные уже добавляются. Подождите пару секунд.")
+	case errors.Is(err, ErrNoTemplateItems):
+		return httpx.Conflict("no-template-items", "Нет позиций из шаблона",
+			"Историю шаблон пишет только своим позициям. Заполните шаг «Позиции» тестовыми данными.")
+	case errors.Is(err, ErrNothingToOrder):
+		return httpx.Conflict("nothing-to-order", "Заказывать нечего",
+			"Сейчас всего хватает, рекомендаций к заказу нет. Промотайте время: запас кончится.")
+	case errors.Is(err, ErrNothingToReceive):
+		return httpx.Conflict("nothing-to-receive", "Нет отправленных заказов",
+			"Сначала отправьте заказ поставщику.")
 	default:
 		return err
 	}

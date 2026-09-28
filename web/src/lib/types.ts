@@ -31,6 +31,7 @@ export interface Me {
     is_sandbox: boolean
     today: Day
     expires_at?: string
+    autopilot: boolean
     permissions: {
       manage_catalog: boolean
       manage_settings: boolean
@@ -330,4 +331,50 @@ export interface ImportResult {
     supplier?: string
     opening_qty: Qty
   }[]
+}
+
+// --- пошаговое демо ---
+
+export type StepID =
+  | 'suppliers'
+  | 'items'
+  | 'history'
+  | 'count'
+  | 'forecast'
+  | 'order'
+  | 'receive'
+  | 'time'
+  | 'notifications'
+
+export interface GuideStep {
+  id: StepID
+  /** В данных есть след шага — руками он сделан или шаблоном. */
+  done: boolean
+  count: number
+  /** У шага есть наполнение тестовыми данными. */
+  fillable: boolean
+  /** Предыдущие шаги пройдены — наполнять можно. */
+  ready: boolean
+}
+
+export interface GuideState {
+  steps: GuideStep[]
+  /** Первый непройденный шаг; нет — пройдено всё. */
+  current?: StepID
+}
+
+export interface FillResult extends GuideState {
+  filled: number
+}
+
+export interface DemoLogin {
+  email: string
+  password: string
+}
+
+export interface SandboxCreated {
+  tenant_id: string
+  expires_at: string
+  redirect_to: string
+  login?: DemoLogin
 }

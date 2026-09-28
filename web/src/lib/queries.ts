@@ -18,6 +18,8 @@ import type {
   Category,
   Dashboard,
   Feed,
+  FillResult,
+  GuideState,
   ImportResult,
   Insights,
   Item,
@@ -29,9 +31,12 @@ import type {
   OrderStatus,
   Page,
   Qty,
+  SandboxCreated,
+  StepID,
   StockCount,
   Supplier,
 } from './types'
+import { saveDemoLogin } from './demoLogin'
 
 /** keys — единый реестр ключей кэша: так их не расходятся по файлам. */
 export const keys = {
@@ -47,6 +52,7 @@ export const keys = {
   orders: (status?: OrderStatus) => ['orders', status ?? 'all'] as const,
   order: (id: string) => ['order', id] as const,
   notifications: ['notifications'] as const,
+  guide: ['sandbox', 'guide'] as const,
 }
 
 export interface MovementFilter {
@@ -156,17 +162,29 @@ export function useOrder(id: string) {
 }
 
 export function useNotifications() {
+  // Лента опрашивается раз в минуту и висит в шапке: без сессии каждый
+  // опрос — это 401 в консоли уже после выхода.
+  const { data: me } = useMe()
   return useQuery({
     queryKey: keys.notifications,
     queryFn: () => request<Feed>('/notifications?limit=50'),
     // Лента обновляется чаще остального: в ней появляются алерты.
     refetchInterval: 60_000,
+    enabled: Boolean(me),
   })
 }
 
 // --- изменения ---
 
-/** useInvalidateAll обновляет всё, на что влияет движение или заказ. */
+/**
+ * useInvalidateAll обновляет всё, на что влияет движение или заказ.
+ *
+ * Список и карточка лежат под разными ключами: ['orders', …] и
+ * ['order', id]. Префикс одного не совпадает с другим, и без отдельной
+ * строки карточка заказа после отправки продолжала показывать кнопку
+ * «Отправить поставщику» — сервер уже ответил «отправлен». То же с
+ * пересчётом.
+ */
 function useInvalidateAll() {
   const client = useQueryClient()
   return () => {
@@ -174,8 +192,10 @@ function useInvalidateAll() {
     void client.invalidateQueries({ queryKey: ['movements'] })
     void client.invalidateQueries({ queryKey: ['insights'] })
     void client.invalidateQueries({ queryKey: ['orders'] })
+    void client.invalidateQueries({ queryKey: ['order'] })
     void client.invalidateQueries({ queryKey: keys.notifications })
     void client.invalidateQueries({ queryKey: ['counts'] })
+    void client.invalidateQueries({ queryKey: ['count'] })
   }
 }
 
@@ -357,7 +377,35 @@ export function useSetAutopilot() {
 
 export function useResetSandbox() {
   return useMutation({
-    mutationFn: () => request<{ redirect_to: string }>('/sandbox/reset', { method: 'POST' }),
+    mutationFn: (mode: 'ready' | 'guided' = 'ready') =>
+      request<SandboxCreated>('/sandbox/reset', { method: 'POST', body: { mode } }),
+    onSuccess: (created) => {
+      // Новый пароль нового демо: старый больше никуда не пускает.
+      if (created.login) saveDemoLogin(created.tenant_id, created.login)
+    },
+  })
+}
+
+/** useGuide — шаги пошагового демо. Только в песочнице. */
+export function useGuide(enabled: boolean) {
+  return useQuery({
+    queryKey: keys.guide,
+    queryFn: () => request<GuideState>('/sandbox/guide'),
+    enabled,
+  })
+}
+
+/** useFillStep заполняет шаг шаблоном: меняется почти всё, обновляем всё. */
+export function useFillStep() {
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (step: StepID) =>
+      request<FillResult>(`/sandbox/guide/${step}/fill`, { method: 'POST' }),
+    onSuccess: (result) => {
+      client.setQueryData(keys.guide, result)
+      void client.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'sandbox' })
+    },
   })
 }
 
@@ -367,6 +415,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: (input: { email: string; password: string }) =>
       request<Me>('/auth/login', { method: 'POST', body: input }),
+    meta: { session: true },
     onSuccess: (me) => {
       client.setQueryData(keys.me, me)
     },
@@ -378,6 +427,7 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: () => request<void>('/auth/logout', { method: 'POST' }),
+    meta: { session: true },
     onSuccess: () => {
       client.clear()
     },

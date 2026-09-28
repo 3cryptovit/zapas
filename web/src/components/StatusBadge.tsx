@@ -5,25 +5,20 @@ interface Props {
 }
 
 /**
- * Бейдж статуса.
+ * Бейдж статуса: мягкая подложка, точка и подпись.
  *
- * Цвета в интерфейсе нет, поэтому статус несут три признака:
- * квадрат-образец с заливкой, подпись прописными и насыщенность
- * шрифта. Образец стоит рядом с текстом, а не под ним: штриховка
- * под буквами читается плохо.
+ * Подпись несёт смысл, цвет помогает найти глазами. Точка спрятана от
+ * скринридера — текст её уже дублирует.
  */
 export function StatusBadge({ status }: Props) {
-  const { label, fill, weight } = STATUS[status]
+  const { label, badge, dot } = STATUS[status]
 
   return (
     <span
-      className={`inline-flex items-center gap-2 text-[0.6875rem] uppercase tracking-[0.14em] text-slate-900 ${weight}`}
+      className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap ${badge}`}
       title={label}
     >
-      <span
-        aria-hidden="true"
-        className={`inline-block size-3.5 shrink-0 border ${fill}`}
-      />
+      <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${dot}`} />
       {label}
     </span>
   )

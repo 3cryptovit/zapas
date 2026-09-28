@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Outlet, Route, Routes } from 'react-router-dom'
 
 import { Layout } from '@/components/Layout'
 import { Skeleton } from '@/components/ui'
@@ -60,9 +60,11 @@ function RequireAuth() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-6xl space-y-4 px-4 py-8">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
+      <div className="min-h-screen bg-slate-50 lg:pl-60">
+        <div className="mx-auto max-w-6xl space-y-6 px-4 py-10 sm:px-6 lg:px-10">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-64 w-full" />
+        </div>
       </div>
     )
   }
@@ -74,9 +76,16 @@ function RequireAuth() {
 
 function NotFound() {
   return (
-    <div className="py-10 text-center">
-      <h1 className="text-2xl font-semibold text-slate-900">Страница не найдена</h1>
-      <p className="mt-2 text-slate-500">Проверьте адрес или вернитесь на дашборд.</p>
+    <div className="flex flex-col items-center py-20 text-center">
+      <p className="text-sm font-medium text-brand-700">404</p>
+      <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900">Страница не найдена</h1>
+      <p className="mt-2 text-sm text-slate-500">Проверьте адрес или вернитесь на дашборд.</p>
+      <Link
+        to="/"
+        className="mt-6 inline-flex min-h-10 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white hover:bg-brand-700"
+      >
+        На дашборд
+      </Link>
     </div>
   )
 }

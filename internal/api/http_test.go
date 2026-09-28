@@ -39,14 +39,23 @@ func newClient(t *testing.T) (*client, *testsupport.Fixture) {
 // проверяется всё, что зависит от домена и пути, — Origin, cookie, редиректы.
 func newClientAt(t *testing.T, baseURL string) (*client, *testsupport.Fixture) {
 	t.Helper()
+	return newClientWith(t, func(c *config.Config) { c.App.BaseURL = baseURL })
+}
+
+// newClientWith поднимает приложение с изменённым конфигом.
+func newClientWith(t *testing.T, tune func(*config.Config)) (*client, *testsupport.Fixture) {
+	t.Helper()
 	env := testsupport.Shared(t)
 	f := env.NewTenant(t, "Кофейня «Демо»")
 
+	cfg := config.Config{
+		App:     config.App{Env: "test"},
+		Session: config.Session{TTL: testSessionTTL},
+	}
+	tune(&cfg)
+
 	app := api.New(api.Deps{
-		Config: config.Config{
-			App:     config.App{Env: "test", BaseURL: baseURL},
-			Session: config.Session{TTL: testSessionTTL},
-		},
+		Config: cfg,
 		// Логи тестов не нужны: падения видно и так.
 		Log:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 		DB:    env.App,

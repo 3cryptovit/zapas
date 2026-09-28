@@ -1,84 +1,208 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import {
+  ArrowLeftRight,
+  Bell,
+  ClipboardCheck,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Settings,
+  Truck,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 
 import { useLogout, useMe, useNotifications } from '@/lib/queries'
+import { GuidePanel } from './GuidePanel'
 import { SandboxBanner } from './SandboxBanner'
 
-/** Пункты навигации. Заказы и настройки доступны только владельцу (§6). */
-const nav = [
-  { to: '/', label: 'Дашборд', end: true, ownerOnly: false },
-  { to: '/movements', label: 'Движения', end: false, ownerOnly: false },
-  { to: '/counts', label: 'Инвентаризация', end: false, ownerOnly: false },
-  { to: '/orders', label: 'Заказы', end: false, ownerOnly: false },
-  { to: '/notifications', label: 'Уведомления', end: false, ownerOnly: false },
-  { to: '/settings', label: 'Настройки', end: false, ownerOnly: true },
+interface NavItem {
+  to: string
+  label: string
+  icon: LucideIcon
+  end: boolean
+  ownerOnly: boolean
+}
+
+/** Пункты навигации. Настройки доступны только владельцу (§6). */
+const nav: NavItem[] = [
+  { to: '/', label: 'Дашборд', icon: LayoutDashboard, end: true, ownerOnly: false },
+  { to: '/movements', label: 'Движения', icon: ArrowLeftRight, end: false, ownerOnly: false },
+  { to: '/counts', label: 'Инвентаризация', icon: ClipboardCheck, end: false, ownerOnly: false },
+  { to: '/orders', label: 'Заказы', icon: Truck, end: false, ownerOnly: false },
+  { to: '/notifications', label: 'Уведомления', icon: Bell, end: false, ownerOnly: false },
+  { to: '/settings', label: 'Настройки', icon: Settings, end: false, ownerOnly: true },
 ]
 
 export function Layout() {
+  const { data: me } = useMe()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const location = useLocation()
+
+  // Переход по ссылке закрывает меню на телефоне.
+  useEffect(() => setMenuOpen(false), [location.pathname])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [menuOpen])
+
+  const sandbox = Boolean(me?.tenant.is_sandbox)
+
+  return (
+    <div className="min-h-screen bg-slate-50 lg:pl-60">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 border-r border-slate-200 bg-white lg:block">
+        <Sidebar />
+      </aside>
+
+      {/* Телефон и планшет: шапка с кнопкой меню. */}
+      <div className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-slate-200 bg-white px-2 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setMenuOpen(true)}
+          aria-label="Открыть меню"
+          aria-expanded={menuOpen}
+          className="flex size-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+        >
+          <Menu aria-hidden="true" className="size-5" strokeWidth={1.75} />
+        </button>
+        <Logo />
+      </div>
+
+      {menuOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden" role="dialog" aria-modal="true" aria-label="Меню">
+          <div className="absolute inset-0 bg-slate-900/30" onClick={() => setMenuOpen(false)} />
+          <aside className="animate-rise absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white shadow-pop">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              aria-label="Закрыть меню"
+              className="absolute top-3 right-3 flex size-9 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            >
+              <X aria-hidden="true" className="size-4" strokeWidth={2} />
+            </button>
+            <Sidebar />
+          </aside>
+        </div>
+      )}
+
+      {sandbox && <SandboxBanner />}
+
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
+        {sandbox && <GuidePanel />}
+        <div className="animate-rise" key={location.pathname}>
+          <Outlet />
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function Logo() {
+  return (
+    <span className="flex items-center gap-2">
+      <span
+        aria-hidden="true"
+        className="flex size-6 items-center justify-center rounded-md bg-brand-600 text-[13px] font-semibold text-white"
+      >
+        Z
+      </span>
+      <span className="text-[15px] font-semibold tracking-tight text-slate-900">Zapas</span>
+    </span>
+  )
+}
+
+function Sidebar() {
   const { data: me } = useMe()
   const { data: feed } = useNotifications()
   const logout = useLogout()
   const navigate = useNavigate()
 
   const isOwner = me?.user.role === 'owner'
+  const name = me?.user.name || me?.user.email || ''
 
   return (
-    <div className="min-h-screen bg-paper">
-      {me?.tenant.is_sandbox && <SandboxBanner />}
+    <div className="flex h-full flex-col">
+      <div className="px-5 pt-5 pb-6">
+        <Logo />
+        {me && (
+          <p className="mt-3 truncate text-[13px] text-slate-500">{me.tenant.name}</p>
+        )}
+      </div>
 
-      <header className="border-b border-slate-300 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-5 gap-y-2 px-4 py-4">
-          <span className="display text-xl text-slate-900">Zapas</span>
-          <span className="eyebrow">{me?.tenant.name}</span>
+      <nav aria-label="Разделы" className="flex-1 px-3">
+        <ul className="space-y-0.5">
+          {nav
+            .filter((item) => !item.ownerOnly || isOwner)
+            .map((item) => (
+              <li key={item.to}>
+                <NavLink
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    `group flex min-h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-brand-50 text-brand-700'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <item.icon
+                        aria-hidden="true"
+                        className={`size-[18px] shrink-0 ${
+                          isActive ? 'text-brand-600' : 'text-slate-400 group-hover:text-slate-600'
+                        }`}
+                        strokeWidth={1.75}
+                      />
+                      <span className="flex-1">{item.label}</span>
+                      {item.to === '/notifications' && feed && feed.unread > 0 && (
+                        <span className="min-w-5 rounded-full bg-brand-600 px-1.5 text-center text-[11px] leading-5 font-semibold text-white tabular-nums">
+                          {feed.unread}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </NavLink>
+              </li>
+            ))}
+        </ul>
+      </nav>
 
-          <div className="ml-auto flex items-center gap-4">
-            <span className="hidden text-xs text-slate-500 sm:inline">
-              {me?.user.name || me?.user.email} · {me?.user.role_label}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                logout.mutate(undefined, { onSuccess: () => navigate('/login') })
-              }}
-              className="eyebrow min-h-11 px-2 hover:text-slate-900"
-            >
-              Выйти
-            </button>
-          </div>
+      <div className="border-t border-slate-100 p-3">
+        <div className="flex items-center gap-3 rounded-lg px-2 py-2">
+          <span
+            aria-hidden="true"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[13px] font-semibold text-slate-600"
+          >
+            {initials(name)}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13px] font-medium text-slate-900">{name}</span>
+            <span className="block truncate text-xs text-slate-500">{me?.user.role_label}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => logout.mutate(undefined, { onSuccess: () => navigate('/login') })}
+            aria-label="Выйти"
+            title="Выйти"
+            className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          >
+            <LogOut aria-hidden="true" className="size-4" strokeWidth={1.75} />
+          </button>
         </div>
-
-        <nav className="mx-auto max-w-6xl overflow-x-auto px-4">
-          <ul className="flex gap-1 whitespace-nowrap">
-            {nav
-              .filter((item) => !item.ownerOnly || isOwner)
-              .map((item) => (
-                <li key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    end={item.end}
-                    className={({ isActive }) =>
-                      `inline-flex min-h-11 items-center gap-2 border-b-2 px-3 text-[0.6875rem] font-semibold uppercase tracking-[0.14em] transition ${
-                        isActive
-                          ? 'border-slate-900 text-slate-900'
-                          : 'border-transparent text-slate-500 hover:text-slate-900'
-                      }`
-                    }
-                  >
-                    {item.label}
-                    {item.to === '/notifications' && feed && feed.unread > 0 && (
-                      <span className="bg-slate-900 px-1.5 py-0.5 text-[0.625rem] font-bold text-white">
-                        {feed.unread}
-                      </span>
-                    )}
-                  </NavLink>
-                </li>
-              ))}
-          </ul>
-        </nav>
-      </header>
-
-      <main className="mx-auto max-w-6xl px-4 py-8">
-        <Outlet />
-      </main>
+      </div>
     </div>
   )
+}
+
+/** Инициалы для аватара: «Иван Петров» → «ИП», почта → первая буква. */
+function initials(name: string): string {
+  const parts = name.replace(/@.*/, '').split(/[\s._-]+/).filter(Boolean)
+  const letters = parts.slice(0, 2).map((p) => p[0]!.toUpperCase())
+  return letters.join('') || '·'
 }

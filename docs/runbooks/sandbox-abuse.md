@@ -5,7 +5,7 @@
 
 ## Как это устроено в обычном режиме
 
-Кнопка «Открыть демо» заводит отдельную организацию с полугодом
+Кнопка «Открыть демо» заводит отдельную организацию с 90 днями
 истории и сразу пускает в неё. Ограничения:
 
 | | |
@@ -108,8 +108,19 @@ sudo -u postgres psql -d zapas -c \
   "update tenants set expires_at = now() where is_sandbox"
 ```
 
-и в `/etc/zapas/zapas.env` поставить `SANDBOX_MAX_ACTIVE=0`, затем
-`systemctl restart zapas-api`. Лендинг сам переключится на видео.
+и в `/etc/zapas/zapas.env` поставить `SANDBOX_DISABLED=true`, затем
+`systemctl restart zapas-api`. Кнопки демо на лендинге начнут отвечать
+«Демо временно выключено» (503 `sandbox-disabled`).
+
+Раньше здесь стояло `SANDBOX_MAX_ACTIVE=0` — и не работало: ноль в
+этом параметре означает «по умолчанию», то есть 300. Проверить, что
+рубильник сработал:
+
+```bash
+curl -s -X POST -H 'Content-Type: application/json' -d '{}' \
+  https://vitalness.ru/zapas/api/v1/sandbox | grep -o '"type":"[^"]*"'
+# "type":"/errors/sandbox-disabled"
+```
 
 ## Чего можно не бояться
 

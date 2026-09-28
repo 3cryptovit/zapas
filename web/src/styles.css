@@ -1,149 +1,163 @@
 @import "tailwindcss";
 
 /*
- * Монохромная палитра.
+ * Inter со своего домена: CSP пускает шрифты только с 'self'.
+ * Подключены два подмножества из семи — латиница и кириллица. Остальные
+ * браузер всё равно не скачал бы, но сборка тащила бы их на сервер.
+ */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/inter/files/inter-cyrillic-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+/*
+ * Палитра.
  *
- * Цветные шкалы Tailwind переопределены серыми: в разметке остаются
- * привычные bg-red-100 и text-emerald-900, но рендерятся они нейтрально.
- * Так редизайн не разошёлся по четырнадцати файлам, а откат — правка
- * одного блока.
- *
- * Тон тёплый (hue 70): чистый серый на экране выглядит синим, а
- * референс — бумажный.
+ * Одна холодная нейтральная шкала, один спокойный акцент и три
+ * приглушённых статусных цвета. Каждая пара «текст — фон» проверена
+ * расчётом по WCAG, минимум 4,5:1 (docs/features/saas-redesign.md).
  */
 @theme {
-  /* Бумага и чернила. */
-  --color-paper: oklch(0.955 0.004 70);
-  --color-ink: oklch(0.17 0.003 70);
+  --color-slate-50: oklch(0.985 0.002 260);
+  --color-slate-100: oklch(0.968 0.003 260);
+  --color-slate-200: oklch(0.925 0.005 260);
+  --color-slate-300: oklch(0.872 0.007 260);
+  --color-slate-400: oklch(0.715 0.011 260);
+  --color-slate-500: oklch(0.545 0.015 260);
+  --color-slate-600: oklch(0.445 0.017 260);
+  --color-slate-700: oklch(0.37 0.019 262);
+  --color-slate-800: oklch(0.28 0.02 264);
+  --color-slate-900: oklch(0.205 0.02 265);
 
-  /* Нейтральная шкала — основа всего. */
-  --color-slate-50: oklch(0.975 0.003 70);
-  --color-slate-100: oklch(0.945 0.003 70);
-  --color-slate-200: oklch(0.9 0.003 70);
-  --color-slate-300: oklch(0.78 0.004 70);
-  --color-slate-400: oklch(0.68 0.003 70);
-  --color-slate-500: oklch(0.55 0.003 70);
-  --color-slate-600: oklch(0.44 0.003 70);
-  --color-slate-700: oklch(0.34 0.003 70);
-  --color-slate-800: oklch(0.25 0.003 70);
-  --color-slate-900: oklch(0.17 0.003 70);
+  /* Акцент: всё, что приглашает к действию или показывает «вы здесь». */
+  --color-brand-50: oklch(0.972 0.013 262);
+  --color-brand-100: oklch(0.94 0.028 262);
+  --color-brand-200: oklch(0.885 0.05 262);
+  --color-brand-300: oklch(0.8 0.08 262);
+  --color-brand-500: oklch(0.585 0.13 262);
+  --color-brand-600: oklch(0.515 0.13 262);
+  --color-brand-700: oklch(0.455 0.12 262);
 
-  /* Тревожные статусы — темнее и контрастнее нейтральных. */
-  --color-red-50: oklch(0.95 0.003 70);
-  --color-red-100: oklch(0.88 0.003 70);
-  --color-red-200: oklch(0.78 0.003 70);
-  --color-red-300: oklch(0.6 0.003 70);
-  --color-red-500: oklch(0.3 0.003 70);
-  --color-red-600: oklch(0.25 0.003 70);
-  --color-red-700: oklch(0.21 0.003 70);
-  --color-red-800: oklch(0.19 0.003 70);
-  --color-red-900: oklch(0.13 0.003 70);
+  /* Всё в порядке. */
+  --color-emerald-50: oklch(0.97 0.022 160);
+  --color-emerald-100: oklch(0.935 0.04 160);
+  --color-emerald-500: oklch(0.64 0.11 158);
+  --color-emerald-700: oklch(0.47 0.085 158);
 
-  /* Предупреждение — среднее по тону. */
-  --color-amber-50: oklch(0.96 0.003 70);
-  --color-amber-100: oklch(0.91 0.003 70);
-  --color-amber-200: oklch(0.83 0.003 70);
-  --color-amber-300: oklch(0.7 0.003 70);
-  --color-amber-500: oklch(0.45 0.003 70);
-  --color-amber-700: oklch(0.32 0.003 70);
-  --color-amber-900: oklch(0.22 0.003 70);
+  /* Внимание. */
+  --color-amber-50: oklch(0.975 0.03 88);
+  --color-amber-100: oklch(0.945 0.055 85);
+  --color-amber-500: oklch(0.77 0.12 78);
+  --color-amber-700: oklch(0.5 0.095 62);
 
-  /* Спокойные статусы — светлее, уходят на задний план. */
-  --color-emerald-50: oklch(0.975 0.003 70);
-  --color-emerald-100: oklch(0.945 0.003 70);
-  --color-emerald-200: oklch(0.9 0.003 70);
-  --color-emerald-300: oklch(0.83 0.003 70);
-  --color-emerald-500: oklch(0.55 0.003 70);
-  --color-emerald-700: oklch(0.44 0.003 70);
-  --color-emerald-900: oklch(0.3 0.003 70);
+  /* Критично. */
+  --color-red-50: oklch(0.968 0.017 22);
+  --color-red-100: oklch(0.935 0.035 22);
+  --color-red-200: oklch(0.88 0.06 22);
+  --color-red-500: oklch(0.62 0.15 24);
+  --color-red-600: oklch(0.555 0.15 25);
+  --color-red-700: oklch(0.5 0.135 25);
 
-  /* Акцент — тот же чёрный: в монохроме выделяет вес, а не оттенок. */
-  --color-brand-50: oklch(0.945 0.003 70);
-  --color-brand-500: oklch(0.17 0.003 70);
-  --color-brand-700: oklch(0.13 0.003 70);
+  --font-sans: "Inter Variable", Inter, -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
 
-  --font-sans: "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
-}
-
-html {
-  color-scheme: light;
-}
-
-body {
-  margin: 0;
-  font-family: var(--font-sans);
-  background: var(--color-paper);
-  color: var(--color-ink);
-  -webkit-font-smoothing: antialiased;
-}
-
-/* Поля ввода на телефоне: крупные, без зума при фокусе в iOS. */
-input,
-select,
-textarea {
-  font-size: 16px;
+  /* Тень одна на весь интерфейс и почти невидимая: карточку держит граница. */
+  --shadow-card: 0 1px 2px 0 oklch(0.205 0.02 265 / 0.04);
+  --shadow-pop: 0 8px 24px -6px oklch(0.205 0.02 265 / 0.14), 0 2px 6px oklch(0.205 0.02 265 / 0.06);
 }
 
 /*
- * Микро-заголовок: прописные с широким трекингом. В референсе так
- * набрана вся служебная мелочь — разделы, подписи, навигация.
+ * Базовые правила — в слое base. Правило вне слоя побеждает любой слой
+ * Tailwind независимо от специфичности: без слоя глобальный :focus-visible
+ * перебивал focus:outline-none у полей, и в фокусе рисовались сразу
+ * обводка и кольцо, а размер шрифта поля нельзя было задать классом.
  */
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-slate-500);
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.55;
+    background: var(--color-slate-50);
+    color: var(--color-slate-900);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Поля ввода на телефоне: 16 px, иначе iOS увеличивает страницу при фокусе. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  @media (min-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 14px;
+    }
+  }
+
+  /* Фокус с клавиатуры виден всегда, от мыши — не мешает. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
+/* Появление содержимого — единственная анимация, кроме hover. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /*
- * Крупный набор. Издательский вид даётся размером, весом и
- * отрицательным трекингом, а не гарнитурой: внешний шрифт
- * запрещён политикой CSP.
+ * backwards, а не both: после окончания анимация не должна оставлять
+ * transform в силе. Иначе Chromium считает элемент трансформированным,
+ * и position: fixed у потомков отсчитывается от него, а не от окна.
  */
-.display {
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 0.92;
-  text-transform: uppercase;
+.animate-rise {
+  animation: rise 180ms ease-out backwards;
 }
 
-/* Волосяная линейка — основной разделитель вместо теней и рамок. */
-.rule {
-  border-top: 1px solid var(--color-slate-300);
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise {
+    animation: none;
+  }
 }
 
-/*
- * Заливки статусов. Три независимых признака вместо цвета:
- * плотность заливки, подпись и насыщенность шрифта. Штриховка
- * переживает и чёрно-белую печать, и дальтонизм.
- */
-.fill-solid {
-  background: var(--color-ink);
-  color: var(--color-paper);
-}
-
-.fill-dense {
-  background-image: repeating-linear-gradient(
-    45deg,
-    var(--color-ink) 0 2px,
-    transparent 2px 5px
-  );
-}
-
-.fill-sparse {
-  background-image: repeating-linear-gradient(
-    45deg,
-    var(--color-slate-700) 0 1px,
-    transparent 1px 7px
-  );
-}
-
-/* На печати фон обычно не печатается — заставляем. */
+/* На печати цвет статусов нужен: без него пропадает второй канал. */
 @media print {
-  .fill-solid,
-  .fill-dense,
-  .fill-sparse {
+  body {
+    background: white;
+  }
+  * {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }

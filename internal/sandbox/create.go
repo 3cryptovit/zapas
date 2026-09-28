@@ -2,8 +2,10 @@ package sandbox
 
 import (
 	"context"
+	crand "crypto/rand"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"math/rand/v2"
 	"time"
 
@@ -65,16 +67,93 @@ func (s *Service) Create(ctx context.Context, seed int64) (Created, error) {
 	}
 
 	tenantID := uuid.Must(uuid.NewV7())
+	// Email уникален глобально, а демо-тенантов много: подставляем id.
+	email := fmt.Sprintf("demo-%s@sandbox.local", tenantID)
+
+	created, tn, warehouseID, err := s.createShell(ctx, tenantID, seed, email, fmt.Sprintf("demo-%s", tenantID))
+	if err != nil {
+		return Created{}, err
+	}
+
+	if err := s.fill(ctx, tn, warehouseID, created.OwnerID, seed); err != nil {
+		// Неудача при наполнении не должна оставлять пустого тенанта.
+		s.deleteTenant(ctx, tn.ID)
+		return Created{}, err
+	}
+
+	// Прогноз и статусы: без них дашборд пустой.
+	if _, err := s.pipeline.Run(ctx, tn); err != nil {
+		s.deleteTenant(ctx, tn.ID)
+		return Created{}, fmt.Errorf("sandbox: прогноз: %w", err)
+	}
+
+	s.log.InfoContext(ctx, "создана песочница",
+		slog.String("tenant_id", tn.ID.String()),
+		slog.Int64("seed", seed),
+	)
+	return created, nil
+}
+
+// CreatedGuided — пустое пошаговое демо и вход в него.
+type CreatedGuided struct {
+	Created
+	// Password показывается посетителю один раз: в базе лежит только хеш.
+	Password string
+}
+
+// CreateGuided заводит пустое демо для пошагового прохождения: тенант,
+// склад и владелец со сгенерированным логином и паролем. Справочники и
+// историю посетитель добавляет сам — руками или шаблоном (§7).
+func (s *Service) CreateGuided(ctx context.Context) (CreatedGuided, error) {
+	seed := s.clock.Now().UnixNano()
+	password := randomString(12)
+
+	// Логин короткий, его набирают руками. Совпадение ловит уникальный
+	// индекс по email — тогда пробуем другой.
+	for attempt := 0; ; attempt++ {
+		email := "demo-" + randomString(8) + "@sandbox.local"
+
+		created, _, _, err := s.createShell(ctx, uuid.Must(uuid.NewV7()), seed, email, password)
+		if err == nil {
+			s.log.InfoContext(ctx, "создана пошаговая песочница",
+				slog.String("tenant_id", created.TenantID.String()),
+			)
+			return CreatedGuided{Created: created, Password: password}, nil
+		}
+		if attempt < 2 && postgres.IsCode(err, postgres.CodeUniqueViolation) {
+			continue
+		}
+		return CreatedGuided{}, err
+	}
+}
+
+// loginAlphabet — без похожих символов: 0/o, 1/l/i посетитель перепутает.
+const loginAlphabet = "abcdefghjkmnpqrstuvwxyz23456789"
+
+func randomString(n int) string {
+	out := make([]byte, n)
+	max := big.NewInt(int64(len(loginAlphabet)))
+	for i := range out {
+		v, err := crand.Int(crand.Reader, max)
+		if err != nil {
+			// crypto/rand не отказывает на поддерживаемых системах; если всё же
+			// отказал, демо без пароля хуже, чем упавший запрос.
+			panic(fmt.Sprintf("sandbox: crypto/rand: %v", err))
+		}
+		out[i] = loginAlphabet[v.Int64()]
+	}
+	return string(out)
+}
+
+// createShell заводит тенанта, склад и владельца — пустое демо.
+func (s *Service) createShell(ctx context.Context, tenantID uuid.UUID, seed int64, email, password string) (Created, tenant.Tenant, uuid.UUID, error) {
 	ownerID := uuid.Must(uuid.NewV7())
 	warehouseID := uuid.Must(uuid.NewV7())
 	expiresAt := s.clock.Now().Add(s.ttl)
 
-	// Email уникален глобально, а демо-тенантов много: подставляем id.
-	email := fmt.Sprintf("demo-%s@sandbox.local", tenantID)
-
-	hash, err := auth.HashPassword(fmt.Sprintf("demo-%s", tenantID))
+	hash, err := auth.HashPassword(password)
 	if err != nil {
-		return Created{}, err
+		return Created{}, tenant.Tenant{}, uuid.Nil, err
 	}
 
 	// Тенант и владелец создаются обслуживающей ролью: политика RLS
@@ -111,7 +190,7 @@ func (s *Service) Create(ctx context.Context, seed int64) (Created, error) {
 		return nil
 	})
 	if err != nil {
-		return Created{}, fmt.Errorf("sandbox: %w", err)
+		return Created{}, tenant.Tenant{}, uuid.Nil, fmt.Errorf("sandbox: %w", err)
 	}
 
 	tn := tenant.Tenant{
@@ -124,30 +203,13 @@ func (s *Service) Create(ctx context.Context, seed int64) (Created, error) {
 		Settings:  tenant.DefaultSettings(),
 	}
 
-	if err := s.fill(ctx, tn, warehouseID, ownerID, seed); err != nil {
-		// Неудача при наполнении не должна оставлять пустого тенанта.
-		s.deleteTenant(ctx, tenantID)
-		return Created{}, err
-	}
-
-	// Прогноз и статусы: без них дашборд пустой.
-	if _, err := s.pipeline.Run(ctx, tn); err != nil {
-		s.deleteTenant(ctx, tenantID)
-		return Created{}, fmt.Errorf("sandbox: прогноз: %w", err)
-	}
-
-	s.log.InfoContext(ctx, "создана песочница",
-		slog.String("tenant_id", tenantID.String()),
-		slog.Int64("seed", seed),
-	)
-
 	return Created{
 		TenantID:  tenantID,
 		OwnerID:   ownerID,
 		Email:     email,
 		Seed:      seed,
 		ExpiresAt: expiresAt,
-	}, nil
+	}, tn, warehouseID, nil
 }
 
 // fill наполняет тенанта справочниками и историей.
@@ -155,15 +217,11 @@ func (s *Service) fill(ctx context.Context, tn tenant.Tenant, warehouseID, owner
 	return s.db.InTenantTx(ctx, tn.ID.String(), func(ctx context.Context, tx postgres.Tx) error {
 		q := sqlc.New(tx)
 
-		supplierIDs, err := s.createSuppliers(ctx, q, tn)
+		supplierIDs, _, err := s.ensureSuppliers(ctx, q, tn)
 		if err != nil {
 			return err
 		}
-		categoryIDs, err := s.createCategories(ctx, q, tn)
-		if err != nil {
-			return err
-		}
-		items, err := s.createItems(ctx, q, tn, warehouseID, categoryIDs, supplierIDs)
+		items, err := s.ensureItems(ctx, q, tn, warehouseID, supplierIDs)
 		if err != nil {
 			return err
 		}
@@ -172,13 +230,26 @@ func (s *Service) fill(ctx context.Context, tn tenant.Tenant, warehouseID, owner
 	})
 }
 
-func (s *Service) createSuppliers(ctx context.Context, q *sqlc.Queries, tn tenant.Tenant) (map[string]uuid.UUID, error) {
+// ensureSuppliers заводит поставщиков шаблона, которых ещё нет. Поиск —
+// по имени без учёта регистра, как в уникальном индексе: поставщик,
+// заведённый посетителем руками, шаблон не дублирует (§7).
+func (s *Service) ensureSuppliers(ctx context.Context, q *sqlc.Queries, tn tenant.Tenant) (map[string]uuid.UUID, int, error) {
 	out := make(map[string]uuid.UUID, len(suppliers))
+	created := 0
 
 	for _, spec := range suppliers {
+		existing, err := q.GetSupplierByName(ctx, sqlc.GetSupplierByNameParams{TenantID: tn.ID, Lower: spec.Name})
+		if err == nil {
+			out[spec.Name] = existing.ID
+			continue
+		}
+		if !postgres.IsNoRows(err) {
+			return nil, 0, fmt.Errorf("sandbox: поиск поставщика %q: %w", spec.Name, err)
+		}
+
 		cutoff, err := clock.ParseTimeOfDay(spec.Cutoff)
 		if err != nil {
-			return nil, fmt.Errorf("sandbox: отсечка %q: %w", spec.Cutoff, err)
+			return nil, 0, fmt.Errorf("sandbox: отсечка %q: %w", spec.Cutoff, err)
 		}
 		row, err := q.CreateSupplier(ctx, sqlc.CreateSupplierParams{
 			ID:               uuid.Must(uuid.NewV7()),
@@ -190,19 +261,28 @@ func (s *Service) createSuppliers(ctx context.Context, q *sqlc.Queries, tn tenan
 			OrderCutoff:      postgres.TimeOfDay(cutoff),
 		})
 		if err != nil {
-			return nil, fmt.Errorf("sandbox: поставщик %q: %w", spec.Name, err)
+			return nil, 0, fmt.Errorf("sandbox: поставщик %q: %w", spec.Name, err)
 		}
 		out[spec.Name] = row.ID
+		created++
 	}
-	return out, nil
+	return out, created, nil
 }
 
-func (s *Service) createCategories(ctx context.Context, q *sqlc.Queries, tn tenant.Tenant) (map[string]uuid.UUID, error) {
+func (s *Service) ensureCategories(ctx context.Context, q *sqlc.Queries, tn tenant.Tenant) (map[string]uuid.UUID, error) {
 	out := map[string]uuid.UUID{}
 
 	for _, spec := range catalog {
 		if _, ok := out[spec.Category]; ok {
 			continue
+		}
+		existing, err := q.GetCategoryByName(ctx, sqlc.GetCategoryByNameParams{TenantID: tn.ID, Lower: spec.Category})
+		if err == nil {
+			out[spec.Category] = existing.ID
+			continue
+		}
+		if !postgres.IsNoRows(err) {
+			return nil, fmt.Errorf("sandbox: поиск категории %q: %w", spec.Category, err)
 		}
 		row, err := q.CreateCategory(ctx, sqlc.CreateCategoryParams{
 			ID: uuid.Must(uuid.NewV7()), TenantID: tn.ID, Name: spec.Category,
@@ -221,14 +301,30 @@ type createdItem struct {
 	Spec itemSpec
 }
 
-func (s *Service) createItems(
+// ensureItems заводит позиции шаблона, которых ещё нет, и возвращает
+// только новые. Поставщики шаблона к этому моменту обязаны существовать.
+func (s *Service) ensureItems(
 	ctx context.Context, q *sqlc.Queries, tn tenant.Tenant,
-	warehouseID uuid.UUID, categories, suppliersByName map[string]uuid.UUID,
+	warehouseID uuid.UUID, suppliersByName map[string]uuid.UUID,
 ) ([]createdItem, error) {
+	categories, err := s.ensureCategories(ctx, q, tn)
+	if err != nil {
+		return nil, err
+	}
+
 	out := make([]createdItem, 0, len(catalog))
 
 	for _, spec := range catalog {
-		supplierID := suppliersByName[spec.Supplier]
+		if _, err := q.GetItemByName(ctx, sqlc.GetItemByNameParams{TenantID: tn.ID, Lower: spec.Name}); err == nil {
+			continue
+		} else if !postgres.IsNoRows(err) {
+			return nil, fmt.Errorf("sandbox: поиск позиции %q: %w", spec.Name, err)
+		}
+
+		supplierID, ok := suppliersByName[spec.Supplier]
+		if !ok {
+			return nil, fmt.Errorf("sandbox: нет поставщика %q для позиции %q", spec.Supplier, spec.Name)
+		}
 
 		row, err := q.CreateItem(ctx, sqlc.CreateItemParams{
 			ID:                uuid.Must(uuid.NewV7()),

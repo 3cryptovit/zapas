@@ -116,6 +116,11 @@ type Querier interface {
 	// Кросс-тенантный: email уникален глобально. Только обслуживающая роль.
 	GetUserByEmail(ctx context.Context, lower string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// Пошаговое демо (§7): состояние шагов и защита наполнения.
+	// По одному числу на шаг. Шаг выполнен, когда в данных есть его след, а
+	// не когда нажата кнопка: ручной путь и шаблон засчитываются одинаково.
+	GuideState(ctx context.Context, tenantID uuid.UUID) (GuideStateRow, error)
+	GuideUnlock(ctx context.Context, tenantID string) error
 	// Напоминание до отсечки не шлётся, если заказ уже отправлен (§5.5).
 	HasOpenOrderForSupplier(ctx context.Context, arg HasOpenOrderForSupplierParams) (bool, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
@@ -129,6 +134,9 @@ type Querier interface {
 	ItemHistory(ctx context.Context, arg ItemHistoryParams) ([]ItemHistoryRow, error)
 	// Карточка позиции: параметры, статус, объяснение и точность (§6.2).
 	ItemInsights(ctx context.Context, arg ItemInsightsParams) (ItemInsightsRow, error)
+	// Позиции, у которых уже есть движения раньше указанного момента: историю
+	// им генератор второй раз не дописывает.
+	ItemsWithMovementsBefore(ctx context.Context, arg ItemsWithMovementsBeforeParams) ([]uuid.UUID, error)
 	ListActiveItemIDs(ctx context.Context, tenantID uuid.UUID) ([]uuid.UUID, error)
 	// Обход тенантов ночными задачами. Истёкшие песочницы пропускаются:
 	// их всё равно вот-вот удалит очистка.
@@ -220,6 +228,9 @@ type Querier interface {
 	SumMovementsByItem(ctx context.Context, tenantID uuid.UUID) ([]SumMovementsByItemRow, error)
 	// Продление срока сессии; last_seen_at заодно показывает активность.
 	TouchSession(ctx context.Context, arg TouchSessionParams) error
+	// Сессионная блокировка на тенанта: два наполнения одного демо сразу
+	// создали бы дубли. Снимается GuideUnlock на том же соединении.
+	TryGuideLock(ctx context.Context, tenantID string) (bool, error)
 	UpdateItem(ctx context.Context, arg UpdateItemParams) (Item, error)
 	// COALESCE позволяет прислать только изменённые поля (PATCH).
 	UpdateSupplier(ctx context.Context, arg UpdateSupplierParams) (Supplier, error)

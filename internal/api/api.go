@@ -139,8 +139,12 @@ func New(d Deps) *App {
 			d.Config.Notify.TelegramBotUsername,
 			d.Log,
 		),
-		sandbox: sandbox.NewHandler(sandboxSvc, simulator, authHandler, limiter,
-			d.Config.Sandbox.MaxActive, d.Config.Sandbox.PerIPHourly),
+		sandbox: sandbox.NewHandler(sandboxSvc, simulator, sandbox.NewGuide(sandboxSvc, simulator),
+			authHandler, limiter, sandbox.Limits{
+				MaxActive: d.Config.Sandbox.MaxActive,
+				PerIP:     d.Config.Sandbox.PerIPHourly,
+				Disabled:  d.Config.Sandbox.Disabled,
+			}),
 	}
 	app.mux = app.routes()
 	return app

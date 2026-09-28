@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ChevronRight, ClipboardCheck, Plus } from 'lucide-react'
 
-import { Alert, Button, Card, EmptyState, Input, Skeleton } from '@/components/ui'
+import { Alert, BackLink, Badge, Button, Card, EmptyState, Input, PageHeader, Skeleton } from '@/components/ui'
 import { ApiError } from '@/lib/api'
-import { formatQty, formatQtyWithUnit } from '@/lib/format'
+import { formatQty, formatQtyWithUnit, inputQty } from '@/lib/format'
 import { useCount, useCounts, useCreateCount, usePostCount, useSaveCountLines } from '@/lib/queries'
 
 /** Список пересчётов (§6, экран «Инвентаризация»). */
@@ -12,45 +13,57 @@ export function CountsPage() {
   const create = useCreateCount()
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">Инвентаризация</h1>
-        <Button onClick={() => create.mutate('Пересчёт')} loading={create.isPending}>
-          Новый пересчёт
-        </Button>
-      </div>
+    <div>
+      <PageHeader
+        title="Инвентаризация"
+        description="Пересчёт сверяет фактический остаток с учётным и сам создаёт корректировки."
+        actions={
+          <Button icon={Plus} onClick={() => create.mutate('Пересчёт')} loading={create.isPending}>
+            Новый пересчёт
+          </Button>
+        }
+      />
 
-      {create.isError && <Alert kind="error">{create.error.message}</Alert>}
+      {create.isError && (
+        <div className="mb-6">
+          <Alert kind="error">{create.error.message}</Alert>
+        </div>
+      )}
 
-      <Card title="Пересчёты">
+      <Card flush title="Пересчёты">
         {isLoading ? (
-          <Skeleton className="h-32 w-full" />
+          <div className="px-5 pb-6 sm:px-6">
+            <Skeleton className="h-32 w-full" />
+          </div>
         ) : !data?.length ? (
           <EmptyState
+            icon={ClipboardCheck}
             title="Пересчётов ещё не было"
-            hint="Пересчёт сверяет фактический остаток с учётным и сам создаёт корректировки."
+            hint="Начните первый — займёт пару минут с телефона."
           />
         ) : (
           <ul className="divide-y divide-slate-100">
             {data.map((count) => (
-              <li key={count.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-                <span>
-                  <Link to={`/counts/${count.id}`} className="font-medium text-slate-900 hover:underline">
-                    {count.note || 'Пересчёт'}
-                  </Link>
-                  <span className="block text-slate-500">
-                    {new Date(count.created_at).toLocaleString('ru-RU')}
-                  </span>
-                </span>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                    count.status === 'posted'
-                      ? 'bg-emerald-100 text-emerald-900'
-                      : 'bg-amber-100 text-amber-900'
-                  }`}
+              <li key={count.id}>
+                <Link
+                  to={`/counts/${count.id}`}
+                  className="group flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-slate-50/70 sm:px-6"
                 >
-                  {count.status === 'posted' ? 'Проведён' : 'Черновик'}
-                </span>
+                  <span className="min-w-0">
+                    <span className="block font-medium text-slate-900">{count.note || 'Пересчёт'}</span>
+                    <span className="block text-[13px] text-slate-500">
+                      {new Date(count.created_at).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' })}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-3">
+                    {count.status === 'posted' ? (
+                      <Badge className="bg-emerald-50 text-emerald-700">Проведён</Badge>
+                    ) : (
+                      <Badge className="bg-amber-50 text-amber-700">Черновик</Badge>
+                    )}
+                    <ChevronRight aria-hidden="true" className="size-4 text-slate-300 group-hover:text-slate-500" strokeWidth={1.75} />
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
@@ -78,14 +91,23 @@ export function CountPage() {
     if (!data?.lines) return
     const initial: Record<string, string> = {}
     for (const line of data.lines) {
-      if (line.counted_qty !== undefined) initial[line.item_id] = line.counted_qty
+      if (line.counted_qty !== undefined) initial[line.item_id] = inputQty(line.counted_qty)
     }
     setValues(initial)
   }, [data?.id, data?.lines])
 
-  if (isLoading || !data) return <Skeleton className="h-96 w-full" />
+  if (isLoading || !data) {
+    return (
+      <div className="space-y-8">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
+  }
 
   const posted = data.status === 'posted'
+  const total = data.lines?.length ?? 0
+  const entered = Object.values(values).filter((v) => v !== '').length
 
   const saveDraft = () => {
     const lines = Object.entries(values)
@@ -116,59 +138,75 @@ export function CountPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <Link to="/counts" className="text-sm text-slate-500 hover:underline">
-          ← К списку пересчётов
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-          {data.note || 'Пересчёт'}
-        </h1>
-        <p className="text-sm text-slate-500">
-          {posted
-            ? `Проведён ${data.posted_at ? new Date(data.posted_at).toLocaleString('ru-RU') : ''}`
-            : 'Черновик — остатки пока не изменены'}
-        </p>
-      </div>
+    <div>
+      <PageHeader
+        back={<BackLink to="/counts">Инвентаризация</BackLink>}
+        title={data.note || 'Пересчёт'}
+        description={
+          posted
+            ? `Проведён ${data.posted_at ? new Date(data.posted_at).toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' }) : ''}`
+            : 'Черновик — остатки пока не изменены'
+        }
+        actions={
+          !posted && (
+            <>
+              <Button variant="secondary" onClick={saveDraft} loading={save.isPending}>
+                Сохранить черновик
+              </Button>
+              <Button onClick={() => runPost(false)} loading={post.isPending}>
+                Провести
+              </Button>
+            </>
+          )
+        }
+      />
 
       {postError && (
-        <Alert kind="warning" title={postError.title}>
-          {postError.detail}
-          {postError.type === '/errors/count-changed' && (
-            <div className="mt-2">
-              <Button variant="danger" onClick={() => runPost(true)} loading={post.isPending}>
-                Всё равно провести
-              </Button>
-            </div>
-          )}
-        </Alert>
+        <div className="mb-6">
+          <Alert kind="warning" title={postError.title}>
+            {postError.detail}
+            {postError.type === '/errors/count-changed' && (
+              <div className="mt-3">
+                <Button variant="danger" size="sm" onClick={() => runPost(true)} loading={post.isPending}>
+                  Всё равно провести
+                </Button>
+              </div>
+            )}
+          </Alert>
+        </div>
       )}
 
-      <Card title={`Позиции (${data.lines?.length ?? 0})`}>
+      <Card
+        flush
+        title="Позиции"
+        description={posted ? `Всего ${total}` : `Введено ${entered} из ${total} · Enter — к следующей`}
+      >
         <ul className="divide-y divide-slate-100">
           {data.lines?.map((line, index) => {
-            const entered = values[line.item_id] ?? ''
-            const diff =
-              entered === '' ? null : Number(entered) - Number(line.current_qty)
+            const value = values[line.item_id] ?? ''
+            const diff = value === '' ? null : Number(value) - Number(line.current_qty)
 
             return (
-              <li key={line.item_id} className="py-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="min-w-40 flex-1 font-medium text-slate-900">
-                    {line.item_name}
+              <li key={line.item_id} className="flex items-center gap-4 px-5 py-3 sm:px-6">
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium text-slate-900">{line.item_name}</span>
+                  <span className="block text-[13px] text-slate-500 tabular-nums">
+                    по учёту {formatQtyWithUnit(line.current_qty, line.base_unit)}
                   </span>
-                  <span className="text-sm text-slate-500">
-                    учёт {formatQtyWithUnit(line.current_qty, line.base_unit)}
-                  </span>
+                </span>
 
+                {/* На телефоне разница — под полем, у правого края: иначе она
+                    уезжала под название и терялась. */}
+                <span className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-4">
                   <Input
                     ref={(el: HTMLInputElement | null) => {
                       inputs.current[index] = el
                     }}
                     inputMode="decimal"
+                    aria-label={`Факт: ${line.item_name}`}
                     placeholder="факт"
                     disabled={posted}
-                    value={entered}
+                    value={value}
                     onChange={(e) =>
                       setValues((prev) => ({
                         ...prev,
@@ -183,33 +221,26 @@ export function CountPage() {
                         inputs.current[index + 1]?.focus()
                       }
                     }}
-                    className="w-28 text-right"
+                    className="w-28 text-right tabular-nums"
                   />
 
                   <span
-                    className={`w-24 text-right text-sm tabular-nums ${
-                      diff === null ? 'text-slate-400' : diff === 0 ? 'text-slate-500' : 'text-amber-700'
+                    className={`text-right text-[13px] tabular-nums sm:w-24 sm:text-sm ${
+                      diff === null
+                        ? 'text-slate-300'
+                        : diff === 0
+                          ? 'text-emerald-700'
+                          : 'font-semibold text-amber-700'
                     }`}
                   >
-                    {diff === null ? '—' : diff === 0 ? 'сходится' : `${diff > 0 ? '+' : ''}${formatQty(diff)}`}
+                    {diff === null ? '—' : diff === 0 ? 'сходится' : `${diff > 0 ? '+' : '−'}${formatQty(Math.abs(diff))}`}
                   </span>
-                </div>
+                </span>
               </li>
             )
           })}
         </ul>
       </Card>
-
-      {!posted && (
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button variant="secondary" onClick={saveDraft} loading={save.isPending}>
-            Сохранить черновик
-          </Button>
-          <Button onClick={() => runPost(false)} loading={post.isPending}>
-            Провести
-          </Button>
-        </div>
-      )}
     </div>
   )
 }

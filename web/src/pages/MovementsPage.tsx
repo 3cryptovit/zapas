@@ -1,10 +1,23 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { ArrowLeftRight, Undo2 } from 'lucide-react'
 
-import { Alert, Button, Card, EmptyState, Select, Skeleton } from '@/components/ui'
-import { formatQty } from '@/lib/format'
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  PageHeader,
+  Select,
+  SignedQty,
+  Skeleton,
+  Table,
+  Td,
+  Th,
+} from '@/components/ui'
 import { useItems, useMe, useMovements, useReverseMovement } from '@/lib/queries'
-import type { MovementType } from '@/lib/types'
+import type { Movement, MovementType } from '@/lib/types'
 
 const typeOptions: { value: MovementType | 'all'; label: string }[] = [
   { value: 'all', label: 'Все типы' },
@@ -35,116 +48,166 @@ export function MovementsPage() {
     setParams(next)
   }
 
+  // Сторнировать можно своё движение; владелец — любое (§2).
+  const canReverse = (m: Movement) =>
+    m.type !== 'reversal' && !m.reversed && (me?.user.role === 'owner' || m.created_by === me?.user.id)
+
+  const onReverse = (m: Movement) => {
+    setReverseError('')
+    reverse.mutate(m.id, { onError: (err) => setReverseError(err.message) })
+  }
+
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-slate-900">Движения</h1>
+    <div>
+      <PageHeader
+        title="Движения"
+        description="Приходы, расходы, списания и корректировки. Записи не правятся — ошибка гасится сторно."
+      />
 
       <Card
-        title={`Журнал${data ? ` (${data.items.length})` : ''}`}
+        flush
+        title="Журнал"
+        description={data ? `Записей: ${data.items.length}` : undefined}
         action={
-          <div className="flex flex-wrap gap-2">
-            <Select
-              value={itemId}
-              onChange={(e) => setFilter('item', e.target.value)}
-              className="min-h-9 w-48 text-sm"
-            >
-              <option value="">Все позиции</option>
-              {items?.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </Select>
-            <Select
-              value={type ?? 'all'}
-              onChange={(e) => setFilter('type', e.target.value === 'all' ? '' : e.target.value)}
-              className="min-h-9 w-44 text-sm"
-            >
-              {typeOptions.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+            <div className="min-w-0 flex-1 sm:w-52 sm:flex-none">
+              <Select aria-label="Позиция" value={itemId} onChange={(e) => setFilter('item', e.target.value)}>
+                <option value="">Все позиции</option>
+                {items?.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="w-40 shrink-0 sm:w-44">
+              <Select
+                aria-label="Тип движения"
+                value={type ?? 'all'}
+                onChange={(e) => setFilter('type', e.target.value === 'all' ? '' : e.target.value)}
+              >
+                {typeOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
         }
       >
-        {error && <Alert kind="error">{error.message}</Alert>}
-        {reverseError && <Alert kind="error">{reverseError}</Alert>}
+        {(error || reverseError) && (
+          <div className="px-5 pb-4 sm:px-6">
+            <Alert kind="error">{error?.message ?? reverseError}</Alert>
+          </div>
+        )}
 
         {isLoading ? (
-          <Skeleton className="h-48 w-full" />
+          <div className="px-5 pb-6 sm:px-6">
+            <Skeleton className="h-48 w-full" />
+          </div>
         ) : !data?.items.length ? (
           <EmptyState
+            icon={ArrowLeftRight}
             title="Движений пока нет"
             hint="Запишите приход или расход с дашборда — здесь появится история."
           />
         ) : (
-          <ul className="divide-y divide-slate-100">
-            {data.items.map((m) => {
-              // Сторнировать можно своё движение; владелец — любое (§2).
-              const canReverse =
-                m.type !== 'reversal' &&
-                !m.reversed &&
-                (me?.user.role === 'owner' || m.created_by === me?.user.id)
-
-              return (
-                <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-3 text-sm">
-                  <span className="w-full font-medium text-slate-900 sm:w-auto">
-                    {m.item_name ? (
-                      <Link to={`/items/${m.item_id}`} className="hover:underline">
-                        {m.item_name}
-                      </Link>
-                    ) : (
-                      '—'
-                    )}
-                  </span>
-
-                  <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
-                    {m.type_label}
-                  </span>
-                  {m.reason_label && <span className="text-slate-500">{m.reason_label}</span>}
-
-                  <span className="text-slate-500">
-                    {new Date(m.occurred_at).toLocaleString('ru-RU')}
-                    {m.author_name ? ` · ${m.author_name}` : ''}
-                  </span>
-
-                  <span
-                    className={`ml-auto tabular-nums font-medium ${
-                      Number(m.qty) < 0 ? 'text-red-700' : 'text-emerald-700'
-                    }`}
-                  >
-                    {Number(m.qty) > 0 ? '+' : ''}
-                    {formatQty(m.qty)}
-                  </span>
-
-                  {canReverse && (
-                    <Button
-                      variant="ghost"
-                      className="min-h-9 px-2 text-xs"
-                      onClick={() => {
-                        setReverseError('')
-                        reverse.mutate(m.id, {
-                          onError: (err) => setReverseError(err.message),
-                        })
-                      }}
-                    >
-                      Сторно
-                    </Button>
+          <>
+            {/* Телефон: список */}
+            <ul className="divide-y divide-slate-100 md:hidden">
+              {data.items.map((m) => (
+                <li key={m.id} className="px-5 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <ItemName m={m} />
+                    <SignedQty qty={m.qty} />
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-slate-500">
+                    <Badge>{m.type_label}</Badge>
+                    {m.reason_label && <span>{m.reason_label}</span>}
+                    <span>{when(m)}</span>
+                  </div>
+                  {canReverse(m) && (
+                    <div className="mt-3">
+                      <Button variant="secondary" size="sm" icon={Undo2} onClick={() => onReverse(m)}>
+                        Сторно
+                      </Button>
+                    </div>
                   )}
                 </li>
-              )
-            })}
-          </ul>
+              ))}
+            </ul>
+
+            {/* Десктоп: таблица */}
+            <div className="hidden md:block">
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>Позиция</Th>
+                    <Th>Тип</Th>
+                    <Th>Когда</Th>
+                    <Th align="right">Количество</Th>
+                    <Th>
+                      <span className="sr-only">Действия</span>
+                    </Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.items.map((m) => (
+                    <tr key={m.id} className="transition-colors hover:bg-slate-50/70 [&:last-child>td]:border-0">
+                      <Td>
+                        <ItemName m={m} />
+                        {m.comment && <span className="block text-[13px] text-slate-500">{m.comment}</span>}
+                      </Td>
+                      <Td>
+                        <span className="flex flex-wrap items-center gap-2">
+                          <Badge>{m.type_label}</Badge>
+                          {m.reason_label && <span className="text-[13px] text-slate-500">{m.reason_label}</span>}
+                          {m.reversed && <span className="text-[13px] text-slate-400">сторнировано</span>}
+                        </span>
+                      </Td>
+                      <Td className="whitespace-nowrap text-slate-600">
+                        {when(m)}
+                        {m.author_name && <span className="block text-[13px] text-slate-500">{m.author_name}</span>}
+                      </Td>
+                      <Td align="right">
+                        <SignedQty qty={m.qty} />
+                      </Td>
+                      <Td align="right" className="w-px">
+                        {canReverse(m) && (
+                          <Button variant="ghost" size="sm" icon={Undo2} onClick={() => onReverse(m)}>
+                            Сторно
+                          </Button>
+                        )}
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          </>
         )}
 
         {data?.next_cursor && (
-          <p className="pt-3 text-sm text-slate-500">
+          <p className="border-t border-slate-100 px-5 py-4 text-[13px] text-slate-500 sm:px-6">
             Показаны последние {data.items.length}. Уточните фильтр, чтобы увидеть остальное.
           </p>
         )}
       </Card>
     </div>
   )
+}
+
+function ItemName({ m }: { m: Movement }) {
+  return m.item_name ? (
+    <Link to={`/items/${m.item_id}`} className="font-medium text-slate-900 hover:text-brand-700">
+      {m.item_name}
+    </Link>
+  ) : (
+    <span className="text-slate-400">—</span>
+  )
+}
+
+function when(m: Movement): string {
+  return new Date(m.occurred_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' })
 }

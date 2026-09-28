@@ -6,6 +6,7 @@ import {
   formatPurchaseQty,
   formatQty,
   formatQtyWithUnit,
+  inputQty,
   plural,
   relativeDay,
 } from './format'
@@ -92,5 +93,16 @@ describe('plural', () => {
 describe('formatCutoff', () => {
   it('показывает время отсечки в поясе тенанта', () => {
     expect(formatCutoff('2026-09-24T16:00:00+03:00', 'Europe/Moscow')).toBe('16:00')
+  })
+})
+
+describe('inputQty', () => {
+  it('убирает хвостовые нули: «10.000» по-русски читается как десять тысяч', () => {
+    expect(inputQty('10.000')).toBe('10')
+    expect(inputQty('1.500')).toBe('1.5')
+    expect(inputQty('0.250')).toBe('0.25')
+    expect(inputQty('100')).toBe('100')
+    expect(inputQty('0.000')).toBe('0')
+    expect(inputQty(undefined)).toBe('')
   })
 })

@@ -9,6 +9,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/vostapenko/zapas/internal/clock"
+	"github.com/vostapenko/zapas/internal/platform/qty"
 )
 
 // Параметры сценария «Кофейня» (§7.2).
@@ -167,3 +168,12 @@ func spikePeriod(rng *rand.Rand, dayIndex int) int {
 
 // writeoffRate — доля списаний от дневного расхода: 1–3% (§7.2).
 func writeoffRate(rng *rand.Rand) float64 { return 0.01 + rng.Float64()*0.02 }
+
+// forUnit приводит количество к единице позиции: штуки — целые, вес и
+// объём — с точностью склада. Спрос считается дробным, а круассан — нет.
+func forUnit(unit string, q qty.Qty) qty.Qty {
+	if unit == "pcs" {
+		return q.Whole()
+	}
+	return q
+}

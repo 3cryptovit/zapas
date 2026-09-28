@@ -103,13 +103,29 @@ func (s *Service) refreshActiveMetric(ctx context.Context) error {
 // Reset возвращает песочницу в исходное состояние: сносит данные и
 // создаёт их заново с тем же seed (§7.4, кнопка «Сбросить демо»).
 func (s *Service) Reset(ctx context.Context, tenantID uuid.UUID, seed int64) (Created, error) {
+	if err := s.drop(ctx, tenantID); err != nil {
+		return Created{}, err
+	}
+	return s.Create(ctx, seed)
+}
+
+// ResetGuided сносит демо и заводит новое пошаговое: пустое, с новым
+// логином и паролем.
+func (s *Service) ResetGuided(ctx context.Context, tenantID uuid.UUID) (CreatedGuided, error) {
+	if err := s.drop(ctx, tenantID); err != nil {
+		return CreatedGuided{}, err
+	}
+	return s.CreateGuided(ctx)
+}
+
+func (s *Service) drop(ctx context.Context, tenantID uuid.UUID) error {
 	err := s.maint.InTx(ctx, func(ctx context.Context, tx postgres.Tx) error {
 		return sqlc.New(tx).DeleteTenant(ctx, tenantID)
 	})
 	if err != nil {
-		return Created{}, fmt.Errorf("sandbox: сброс: %w", err)
+		return fmt.Errorf("sandbox: сброс: %w", err)
 	}
-	return s.Create(ctx, seed)
+	return nil
 }
 
 // SetAutopilot включает и выключает автозаказ в демо (§7.3).

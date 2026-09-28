@@ -81,4 +81,19 @@ for a in $assets; do
   [ "$code" = "200" ] || { echo "SMOKE FAILED"; exit 1; }
 done
 
+# Fonts are referenced from CSS, not HTML. A missing font is another
+# silent failure: the page quietly falls back to the system typeface.
+echo "  fonts:"
+fonts=$(for a in $assets; do
+  case "$a" in *.css) "${CURL[@]}" "$BASE$a" ;; esac
+done | grep -oE 'url\(/zapas/[^)]+\.woff2\)' | sed -E 's/^url\((.*)\)$/\1/' | sort -u)
+
+[ -n "$fonts" ] || { echo "SMOKE FAILED: no fonts referenced by CSS"; exit 1; }
+
+for f in $fonts; do
+  result=$("${CURL[@]}" -o /dev/null -w '%{http_code} %{content_type}' "$BASE$f")
+  echo "    $f: $result"
+  [ "${result%% *}" = "200" ] || { echo "SMOKE FAILED"; exit 1; }
+done
+
 echo "==> deployed"

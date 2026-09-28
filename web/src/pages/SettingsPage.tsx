@@ -1,6 +1,22 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { ExternalLink, Package, Plus, Send, Truck, Upload } from 'lucide-react'
 
-import { Alert, Button, Card, EmptyState, Field, Input, Select, Skeleton } from '@/components/ui'
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+  Skeleton,
+  Table,
+  Td,
+  Textarea,
+  Th,
+} from '@/components/ui'
 import { ApiError } from '@/lib/api'
 import { formatQtyWithUnit } from '@/lib/format'
 import {
@@ -19,21 +35,46 @@ export function SettingsPage() {
   const { data: me } = useMe()
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-semibold text-slate-900">Настройки</h1>
+    <div>
+      <PageHeader title="Настройки" description="Номенклатура, поставщики и каналы уведомлений." />
 
       {me?.tenant.is_sandbox && (
-        <Alert kind="info">
-          В демо отключены внешние каналы, приглашение сотрудников и смена
-          пароля — чтобы демо нельзя было использовать для рассылок.
-        </Alert>
+        <div className="mb-8">
+          <Alert kind="info">
+            В демо отключены внешние каналы, приглашение сотрудников и смена пароля — чтобы демо нельзя
+            было использовать для рассылок.
+          </Alert>
+        </div>
       )}
 
-      <ImportCard />
-      <ItemsCard />
-      <SuppliersCard />
-      <ChannelsCard />
+      <div className="divide-y divide-slate-200">
+        <Section title="Импорт из CSV" hint="Быстрый старт: вся номенклатура одним файлом из Excel.">
+          <ImportCard />
+        </Section>
+        <Section title="Позиции" hint="Что лежит на складе и в каких единицах считается.">
+          <ItemsCard />
+        </Section>
+        <Section title="Поставщики" hint="Срок и дни доставки нужны, чтобы система знала, когда напоминать о заказе.">
+          <SuppliersCard />
+        </Section>
+        <Section title="Уведомления" hint="Сводка и срочные алерты в Telegram.">
+          <ChannelsCard />
+        </Section>
+      </div>
     </div>
+  )
+}
+
+/** Раздел настроек: слева заголовок и пояснение, справа содержимое. */
+function Section({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
+  return (
+    <section className="grid gap-4 py-8 first:pt-0 lg:grid-cols-3 lg:gap-10">
+      <div>
+        <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>
+        <p className="mt-1 text-sm leading-relaxed text-slate-500">{hint}</p>
+      </div>
+      <div className="min-w-0 lg:col-span-2">{children}</div>
+    </section>
   )
 }
 
@@ -46,62 +87,52 @@ const csvTemplate = [
 /** Импорт CSV: сначала предпросмотр с ошибками, потом импорт (FR-4). */
 function ImportCard() {
   const [csv, setCsv] = useState('')
+  const [fileName, setFileName] = useState('')
   const importCSV = useImportCSV()
   const result = importCSV.data
 
   const readFile = async (file: File) => {
+    setFileName(file.name)
     setCsv(await file.text())
     importCSV.reset()
   }
 
   return (
-    <Card title="Импорт номенклатуры из CSV">
-      <div className="space-y-3">
-        <p className="text-sm text-slate-600">
-          Файл с колонками «Название» и «Единица» — остальные необязательны.
-          Разделитель определяется сам: подойдёт и CSV из русского Excel.
+    <Card>
+      <div className="space-y-5">
+        <p className="text-sm leading-relaxed text-slate-600">
+          Обязательны колонки «Название» и «Единица», остальные — по желанию. Разделитель определяется сам:
+          подойдёт и CSV из русского Excel.
         </p>
 
-        <input
-          type="file"
-          accept=".csv,text/csv"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void readFile(file)
-          }}
-          className="block w-full text-sm file:mr-3 file:min-h-11 file:rounded-lg file:border-0 file:bg-slate-100 file:px-4 file:text-sm file:font-medium"
-        />
+        <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border border-dashed border-slate-300 px-4 py-6 text-center transition-colors hover:border-brand-300 hover:bg-brand-50/40">
+          <Upload aria-hidden="true" className="size-5 text-slate-400" strokeWidth={1.75} />
+          <span className="text-sm font-medium text-slate-700">{fileName || 'Выберите файл CSV'}</span>
+          <span className="text-[13px] text-slate-500">или вставьте содержимое ниже</span>
+          <input
+            type="file"
+            accept=".csv,text/csv"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) void readFile(file)
+            }}
+          />
+        </label>
 
-        <Field label="Или вставьте содержимое">
-          <textarea
+        <Field label="Содержимое файла">
+          <Textarea
             rows={5}
             value={csv}
             onChange={(e) => {
               setCsv(e.target.value)
+              setFileName('')
               importCSV.reset()
             }}
             placeholder={csvTemplate}
-            className="block w-full rounded-lg border-0 p-3 font-mono text-sm ring-1 ring-inset ring-slate-300 focus:ring-2 focus:ring-inset focus:ring-brand-500"
+            className="font-mono sm:text-[13px]"
           />
         </Field>
-
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="secondary"
-            disabled={!csv.trim()}
-            loading={importCSV.isPending}
-            onClick={() => importCSV.mutate({ csv, dryRun: true })}
-          >
-            Предпросмотр
-          </Button>
-          <Button
-            disabled={!csv.trim() || !result || !result.dry_run || Boolean(result.errors?.length)}
-            loading={importCSV.isPending}
-            onClick={() => importCSV.mutate({ csv, dryRun: false })}
-          >
-            Импортировать
-          </Button>
-        </div>
 
         {importCSV.isError && (
           <Alert kind="error">
@@ -111,36 +142,47 @@ function ImportCard() {
           </Alert>
         )}
 
-        {result && (
-          <div className="space-y-2">
-            {result.errors?.length ? (
-              <Alert kind="error" title={`Ошибок в файле: ${result.errors.length}`}>
-                <ul className="mt-1 space-y-0.5">
-                  {result.errors.slice(0, 20).map((e, i) => (
-                    <li key={i}>
-                      Строка {e.line}
-                      {e.column ? `, «${e.column}»` : ''}: {e.message}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-2">
-                  Импорт не выполнен: либо всё, либо ничего. Поправьте файл
-                  и попробуйте снова.
-                </p>
-              </Alert>
-            ) : result.dry_run ? (
-              <Alert kind="success" title="Файл разобран">
-                Позиций: {result.items}, с начальным остатком: {result.with_opening}.
-                Нажмите «Импортировать», чтобы записать.
-              </Alert>
-            ) : (
-              <Alert kind="success" title="Импорт завершён">
-                Позиций: {result.items}, категорий заведено: {result.categories},
-                поставщиков: {result.suppliers}.
-              </Alert>
-            )}
-          </div>
-        )}
+        {result &&
+          (result.errors?.length ? (
+            <Alert kind="error" title={`Ошибок в файле: ${result.errors.length}`}>
+              <ul className="mt-1 space-y-0.5">
+                {result.errors.slice(0, 20).map((e, i) => (
+                  <li key={i}>
+                    Строка {e.line}
+                    {e.column ? `, «${e.column}»` : ''}: {e.message}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2">Импорт не выполнен: либо всё, либо ничего. Поправьте файл и попробуйте снова.</p>
+            </Alert>
+          ) : result.dry_run ? (
+            <Alert kind="success" title="Файл разобран">
+              Позиций: {result.items}, с начальным остатком: {result.with_opening}. Нажмите «Импортировать»,
+              чтобы записать.
+            </Alert>
+          ) : (
+            <Alert kind="success" title="Импорт завершён">
+              Позиций: {result.items}, категорий заведено: {result.categories}, поставщиков: {result.suppliers}.
+            </Alert>
+          ))}
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            disabled={!csv.trim()}
+            loading={importCSV.isPending && importCSV.variables?.dryRun === true}
+            onClick={() => importCSV.mutate({ csv, dryRun: true })}
+          >
+            Предпросмотр
+          </Button>
+          <Button
+            disabled={!csv.trim() || !result || !result.dry_run || Boolean(result.errors?.length)}
+            loading={importCSV.isPending && importCSV.variables?.dryRun === false}
+            onClick={() => importCSV.mutate({ csv, dryRun: false })}
+          >
+            Импортировать
+          </Button>
+        </div>
       </div>
     </Card>
   )
@@ -178,21 +220,30 @@ function ItemsCard() {
   }
 
   return (
-    <Card title={`Позиции (${items?.length ?? 0})`}>
-      <form onSubmit={submit} className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Field label="Название">
-          <Input required value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <Field label="Единица">
+    <Card flush>
+      <form onSubmit={submit} className="grid gap-4 px-5 pt-5 pb-6 sm:grid-cols-2 sm:px-6">
+        <div className="sm:col-span-2">
+          <Field label="Название">
+            <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Молоко 3,2%" />
+          </Field>
+        </div>
+        <Field label="Единица учёта">
           <Select value={unit} onChange={(e) => setUnit(e.target.value)}>
-            <option value="l">л</option>
-            <option value="kg">кг</option>
-            <option value="pcs">шт</option>
+            <option value="l">литры</option>
+            <option value="kg">килограммы</option>
+            <option value="pcs">штуки</option>
           </Select>
+        </Field>
+        <Field label="Минимальный остаток" hint="Пока нет прогноза">
+          <Input
+            inputMode="decimal"
+            value={minQty}
+            onChange={(e) => setMinQty(e.target.value.replace(',', '.'))}
+          />
         </Field>
         <Field label="Категория">
           <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            <option value="">—</option>
+            <option value="">Без категории</option>
             {categories?.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -202,7 +253,7 @@ function ItemsCard() {
         </Field>
         <Field label="Поставщик">
           <Select value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
-            <option value="">—</option>
+            <option value="">Без поставщика</option>
             {suppliers?.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -210,39 +261,59 @@ function ItemsCard() {
             ))}
           </Select>
         </Field>
-        <Field label="Мин. остаток" hint="пока нет прогноза">
-          <Input inputMode="decimal" value={minQty} onChange={(e) => setMinQty(e.target.value.replace(',', '.'))} />
-        </Field>
-        <div className="sm:col-span-2 lg:col-span-5">
-          <Button type="submit" loading={create.isPending}>
+        {create.isError && (
+          <div className="sm:col-span-2">
+            <Alert kind="error">{create.error.message}</Alert>
+          </div>
+        )}
+        <div className="sm:col-span-2">
+          <Button type="submit" icon={Plus} loading={create.isPending}>
             Добавить позицию
           </Button>
         </div>
       </form>
 
-      {create.isError && <Alert kind="error">{create.error.message}</Alert>}
-
-      {isLoading ? (
-        <Skeleton className="h-24 w-full" />
-      ) : !items?.length ? (
-        <EmptyState title="Позиций пока нет" hint="Добавьте первую или импортируйте CSV." />
-      ) : (
-        <ul className="divide-y divide-slate-100 text-sm">
-          {items.map((item) => (
-            <li key={item.id} className="flex flex-wrap items-center gap-3 py-2">
-              <span className="flex-1 font-medium text-slate-900">{item.name}</span>
-              <span className="text-slate-500">{item.unit_label}</span>
-              <span className="text-slate-500">{item.category_name ?? '—'}</span>
-              <span className="text-slate-500">{item.supplier_name ?? 'без поставщика'}</span>
-              {Number(item.manual_min_qty) > 0 && (
-                <span className="text-slate-500">
-                  мин. {formatQtyWithUnit(item.manual_min_qty, item.base_unit)}
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="border-t border-slate-100">
+        {isLoading ? (
+          <div className="p-6">
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : !items?.length ? (
+          <EmptyState icon={Package} title="Позиций пока нет" hint="Добавьте первую или импортируйте CSV." />
+        ) : (
+          <div className="pt-5">
+            <Table>
+              <thead>
+                <tr>
+                  <Th>Позиция</Th>
+                  <Th>Поставщик</Th>
+                  <Th align="right">Мин. остаток</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} className="[&:last-child>td]:border-0">
+                    <Td>
+                      <span className="font-medium text-slate-900">{item.name}</span>
+                      <span className="block text-[13px] text-slate-500">
+                        {[item.category_name, item.unit_label].filter(Boolean).join(' · ')}
+                      </span>
+                    </Td>
+                    <Td className="text-slate-600">{item.supplier_name ?? <span className="text-slate-300">—</span>}</Td>
+                    <Td align="right" className="text-slate-600">
+                      {Number(item.manual_min_qty) > 0 ? (
+                        formatQtyWithUnit(item.manual_min_qty, item.base_unit)
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </div>
+        )}
+      </div>
     </Card>
   )
 }
@@ -263,9 +334,9 @@ function SuppliersCard() {
     setDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()))
 
   return (
-    <Card title={`Поставщики (${suppliers?.length ?? 0})`}>
+    <Card flush>
       <form
-        className="mb-4 space-y-3"
+        className="grid gap-4 px-5 pt-5 pb-6 sm:grid-cols-2 sm:px-6"
         onSubmit={(e) => {
           e.preventDefault()
           create.mutate(
@@ -280,23 +351,22 @@ function SuppliersCard() {
           )
         }}
       >
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Название">
-            <Input required value={name} onChange={(e) => setName(e.target.value)} />
-          </Field>
-          <Field label="Контакт" hint="телеграм, почта или телефон">
-            <Input value={contact} onChange={(e) => setContact(e.target.value)} />
-          </Field>
-          <Field label="Срок поставки, дней">
-            <Input type="number" min="0" max="60" value={lead} onChange={(e) => setLead(e.target.value)} />
-          </Field>
-          <Field label="Время отсечки">
-            <Input type="time" value={cutoff} onChange={(e) => setCutoff(e.target.value)} />
-          </Field>
-        </div>
+        <Field label="Название">
+          <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Молочная ферма" />
+        </Field>
+        <Field label="Контакт" hint="Телеграм, почта или телефон">
+          <Input value={contact} onChange={(e) => setContact(e.target.value)} />
+        </Field>
+        <Field label="Срок поставки, дней">
+          <Input type="number" min="0" max="60" value={lead} onChange={(e) => setLead(e.target.value)} />
+        </Field>
+        <Field label="Принимает заказы до">
+          <Input type="time" value={cutoff} onChange={(e) => setCutoff(e.target.value)} />
+        </Field>
 
-        <Field label="Дни доставки">
-          <div className="flex flex-wrap gap-2">
+        <fieldset className="sm:col-span-2">
+          <legend className="mb-1.5 text-[13px] font-medium text-slate-700">Дни доставки</legend>
+          <div className="flex flex-wrap gap-1.5">
             {weekdayNames.map((label, index) => {
               const day = index + 1
               const on = days.includes(day)
@@ -306,10 +376,10 @@ function SuppliersCard() {
                   type="button"
                   onClick={() => toggle(day)}
                   aria-pressed={on}
-                  className={`min-h-11 min-w-11 rounded-lg text-sm font-medium ring-1 ring-inset ${
+                  className={`min-h-11 min-w-11 rounded-lg text-sm font-medium transition-colors sm:min-h-10 sm:min-w-10 ${
                     on
-                      ? 'bg-brand-700 text-white ring-brand-700'
-                      : 'bg-white text-slate-700 ring-slate-300'
+                      ? 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-200'
+                      : 'bg-white text-slate-600 ring-1 ring-inset ring-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   {label}
@@ -317,39 +387,57 @@ function SuppliersCard() {
               )
             })}
           </div>
-        </Field>
+        </fieldset>
 
-        <Button type="submit" loading={create.isPending} disabled={days.length === 0}>
-          Добавить поставщика
-        </Button>
+        {create.isError && (
+          <div className="sm:col-span-2">
+            <Alert kind="error">{create.error.message}</Alert>
+          </div>
+        )}
+        <div className="sm:col-span-2">
+          <Button type="submit" icon={Plus} loading={create.isPending} disabled={days.length === 0}>
+            Добавить поставщика
+          </Button>
+        </div>
       </form>
 
-      {create.isError && <Alert kind="error">{create.error.message}</Alert>}
-
-      {isLoading ? (
-        <Skeleton className="h-24 w-full" />
-      ) : !suppliers?.length ? (
-        <EmptyState
-          title="Поставщиков пока нет"
-          hint="Срок поставки и дни доставки нужны, чтобы система знала, когда напоминать о заказе."
-        />
-      ) : (
-        <ul className="divide-y divide-slate-100 text-sm">
-          {suppliers.map((s) => (
-            <li key={s.id} className="flex flex-wrap items-center gap-3 py-2">
-              <span className="flex-1 font-medium text-slate-900">{s.name}</span>
-              <span className="text-slate-500">
-                возит {s.delivery_weekdays.map((d) => weekdayNames[d - 1]).join(', ')}
-              </span>
-              <span className="text-slate-500">срок {s.lead_time_days} дн.</span>
-              <span className="text-slate-500">
-                до {String(s.order_cutoff.Hour).padStart(2, '0')}:
-                {String(s.order_cutoff.Minute).padStart(2, '0')}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="border-t border-slate-100">
+        {isLoading ? (
+          <div className="p-6">
+            <Skeleton className="h-24 w-full" />
+          </div>
+        ) : !suppliers?.length ? (
+          <EmptyState icon={Truck} title="Поставщиков пока нет" hint="Добавьте первого — форма выше." />
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {suppliers.map((s) => (
+              <li key={s.id} className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-4 sm:px-6">
+                <span className="min-w-0">
+                  <span className="block font-medium text-slate-900">{s.name}</span>
+                  <span className="block text-[13px] text-slate-500">
+                    срок {s.lead_time_days} дн. · заказ до {String(s.order_cutoff.Hour).padStart(2, '0')}:
+                    {String(s.order_cutoff.Minute).padStart(2, '0')}
+                    {s.contact ? ` · ${s.contact}` : ''}
+                  </span>
+                </span>
+                <span className="flex gap-1" aria-label={`Дни доставки: ${s.delivery_weekdays.map((d) => weekdayNames[d - 1]).join(', ')}`}>
+                  {weekdayNames.map((label, index) => (
+                    <span
+                      key={label}
+                      aria-hidden="true"
+                      className={`flex size-7 items-center justify-center rounded-md text-[11px] font-medium ${
+                        s.delivery_weekdays.includes(index + 1) ? 'bg-brand-50 text-brand-700' : 'text-slate-300'
+                      }`}
+                    >
+                      {label}
+                    </span>
+                  ))}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </Card>
   )
 }
@@ -357,27 +445,32 @@ function SuppliersCard() {
 function ChannelsCard() {
   const { data: me } = useMe()
   const link = useLinkTelegram()
+  const linked = Boolean(me?.user.telegram_linked)
 
   return (
-    <Card title="Уведомления">
-      <div className="space-y-3 text-sm text-slate-700">
-        <p>
-          Telegram:{' '}
-          {me?.user.telegram_linked ? (
-            <span className="font-medium text-emerald-700">привязан</span>
+    <Card>
+      <div className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+              <Send aria-hidden="true" className="size-4" strokeWidth={1.75} />
+            </span>
+            <div>
+              <p className="font-medium text-slate-900">Telegram</p>
+              <p className="text-[13px] text-slate-500">Сводка в 09:00 и срочные алерты</p>
+            </div>
+          </div>
+          {linked ? (
+            <Badge className="bg-emerald-50 text-emerald-700">Привязан</Badge>
           ) : (
-            <span className="text-slate-500">не привязан</span>
+            <Badge>Не привязан</Badge>
           )}
-        </p>
+        </div>
 
         {!me?.tenant.is_sandbox && (
-          <div className="space-y-2">
-            <Button
-              variant="secondary"
-              loading={link.isPending}
-              onClick={() => link.mutate()}
-            >
-              {me?.user.telegram_linked ? 'Привязать другой чат' : 'Привязать Telegram'}
+          <div className="space-y-3">
+            <Button variant="secondary" loading={link.isPending} onClick={() => link.mutate()}>
+              {linked ? 'Привязать другой чат' : 'Привязать Telegram'}
             </Button>
 
             {link.data && (
@@ -386,23 +479,21 @@ function ChannelsCard() {
                   href={link.data.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="font-medium underline"
+                  className="inline-flex items-center gap-1 font-medium underline underline-offset-2"
                 >
                   Открыть бота и подтвердить
+                  <ExternalLink aria-hidden="true" className="size-3.5" strokeWidth={2} />
                 </a>
-                <p className="mt-1 text-slate-600">
-                  Ссылка одноразовая и действует 15 минут.
-                </p>
+                <p className="mt-1">Ссылка одноразовая и действует 15 минут.</p>
               </Alert>
             )}
             {link.isError && <Alert kind="error">{link.error.message}</Alert>}
           </div>
         )}
 
-        <p className="text-slate-500">
-          Ежедневная сводка уходит в 09:00 по времени организации. Срочные
-          алерты приходят сразу, но в тихие часы (22:00–08:00) откладываются
-          до утра.
+        <p className="border-t border-slate-100 pt-4 text-[13px] leading-relaxed text-slate-500">
+          Ежедневная сводка уходит в 09:00 по времени организации. Срочные алерты приходят сразу, но в тихие
+          часы (22:00–08:00) откладываются до утра.
         </p>
       </div>
     </Card>

@@ -926,14 +926,30 @@ paths:
       tags: [Песочница]
       summary: Открыть демо
       description: |
-        Заводит отдельного тенанта с полугодом правдоподобной истории и
-        сразу впускает в него: логина и пароля не требуется. Живёт 24
-        часа, затем удаляется (§7.2). Частота ограничена по IP.
+        Заводит отдельного тенанта и сразу впускает в него. Живёт 24 часа,
+        затем удаляется (§7.2). Частота ограничена по IP.
+
+        Режимы:
+        - `ready` (по умолчанию) — 38 позиций и 90 дней истории, прогноз
+          посчитан; логина нет, вход только этой сессией;
+        - `guided` — пустая организация для пошагового демо и логин с
+          паролем в ответе. Пароль отдаётся один раз: в базе лежит хеш.
 
         Если посетитель уже внутри живого демо, второго не создаётся:
-        ответ `200` возвращает то же самое. Иначе повторный клик тратил
-        бы лимит, хотя человек просто хотел попасть обратно.
+        ответ `200` возвращает то же самое, без логина. Иначе повторный
+        клик тратил бы лимит, хотя человек просто хотел попасть обратно.
       security: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode: { $ref: "#/components/schemas/SandboxMode" }
+                website:
+                  type: string
+                  description: Поле-ловушка для ботов. Браузер оставляет пустым.
       responses:
         "200":
           description: |
@@ -941,30 +957,22 @@ paths:
             Ничего не создано, лимит не потрачен.
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  tenant_id: { type: string, format: uuid }
-                  expires_at: { type: string, format: date-time }
-                  redirect_to:
-                    type: string
-                    description: Кабинет под путём публичного адреса.
-                    example: /zapas/app/
+              schema: { $ref: "#/components/schemas/SandboxCreated" }
         "201":
           description: Демо создано, сессия открыта
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  tenant_id: { type: string, format: uuid }
-                  expires_at: { type: string, format: date-time }
-                  redirect_to:
-                    type: string
-                    description: Кабинет под путём публичного адреса.
-                    example: /zapas/app/
+              schema: { $ref: "#/components/schemas/SandboxCreated" }
+        "422": { $ref: "#/components/responses/Problem" }
         "429":
-          description: Слишком часто или достигнут предел живых демо
+          description: Слишком часто
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "503":
+          description: |
+            Предел живых демо (`sandbox-busy`) или демо выключено
+            аварийно, `SANDBOX_DISABLED` (`sandbox-disabled`).
           content:
             application/problem+json:
               schema: { $ref: "#/components/schemas/Problem" }
@@ -1026,18 +1034,71 @@ paths:
       operationId: resetSandbox
       tags: [Песочница]
       summary: Начать демо заново
+      description: |
+        Сносит демо и заводит новое. Режим `guided` даёт новое пустое
+        демо с новым логином, `ready` — готовое с тем же seed.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mode: { $ref: "#/components/schemas/SandboxMode" }
       responses:
         "200":
-          description: Куда идти дальше
+          description: Новое демо, сессия открыта
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  redirect_to:
-                    type: string
-                    description: Кабинет под путём публичного адреса.
-                    example: /zapas/app/
+              schema: { $ref: "#/components/schemas/SandboxCreated" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /sandbox/guide:
+    get:
+      operationId: getSandboxGuide
+      tags: [Песочница]
+      summary: Шаги пошагового демо
+      description: |
+        Девять шагов внедрения по порядку. Шаг пройден, когда в данных
+        есть его след — руками он сделан или шаблоном, всё равно.
+      responses:
+        "200":
+          description: Состояние шагов
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GuideState" }
+        "4XX": { $ref: "#/components/responses/Problem" }
+
+  /sandbox/guide/{step}/fill:
+    post:
+      operationId: fillSandboxStep
+      tags: [Песочница]
+      summary: Заполнить шаг тестовыми данными
+      description: |
+        Повтор ничего не дублирует: справочники ищутся по имени,
+        история дописывается только позициям без неё, заказы и приёмка —
+        по статусу. Шаги заполняются по порядку.
+      parameters:
+        - name: step
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/StepID" }
+      responses:
+        "200":
+          description: Заполнено; в ответе новое состояние
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FillResult" }
+        "404": { $ref: "#/components/responses/Problem" }
+        "409":
+          description: |
+            `step-order` — сначала предыдущий шаг; `not-fillable` — шаг
+            делается только руками; `fill-busy` — шаг уже заполняется
+            из другой вкладки; `no-template-items`, `nothing-to-order`,
+            `nothing-to-receive` — шаблону не с чем работать.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
         "4XX": { $ref: "#/components/responses/Problem" }
 
   /healthz:
@@ -1193,6 +1254,9 @@ components:
             is_sandbox: { type: boolean }
             today: { $ref: "#/components/schemas/Day" }
             expires_at: { type: string, format: date-time }
+            autopilot:
+              type: boolean
+              description: Автопилот заказов в демо; у рабочей организации всегда false.
             permissions:
               type: object
               properties:
@@ -1577,6 +1641,70 @@ components:
         received: { type: integer }
         ordered: { type: integer }
         notifications: { type: integer }
+
+    SandboxMode:
+      type: string
+      enum: [ready, guided]
+      default: ready
+
+    SandboxCreated:
+      type: object
+      required: [tenant_id, expires_at, redirect_to]
+      properties:
+        tenant_id: { type: string, format: uuid }
+        expires_at: { type: string, format: date-time }
+        redirect_to:
+          type: string
+          description: Кабинет под путём публичного адреса.
+          example: /zapas/app/
+        login:
+          type: object
+          description: Только в режиме guided и только при создании.
+          properties:
+            email: { type: string, example: demo-tqyvnza3@sandbox.local }
+            password: { type: string, minLength: 12, maxLength: 12 }
+
+    StepID:
+      type: string
+      enum: [suppliers, items, history, count, forecast, order, receive, time, notifications]
+
+    GuideStep:
+      type: object
+      required: [id, done, count, fillable, ready]
+      properties:
+        id: { $ref: "#/components/schemas/StepID" }
+        done:
+          type: boolean
+          description: В данных есть след шага.
+        count:
+          type: integer
+          description: Этот след — поставщиков, позиций, дней с расходом и т. п.
+        fillable:
+          type: boolean
+          description: У шага есть наполнение тестовыми данными.
+        ready:
+          type: boolean
+          description: Предыдущие шаги пройдены.
+
+    GuideState:
+      type: object
+      required: [steps]
+      properties:
+        steps:
+          type: array
+          items: { $ref: "#/components/schemas/GuideStep" }
+        current:
+          $ref: "#/components/schemas/StepID"
+
+    FillResult:
+      allOf:
+        - $ref: "#/components/schemas/GuideState"
+        - type: object
+          required: [filled]
+          properties:
+            filled:
+              type: integer
+              description: Сколько записей добавил шаблон; при повторе ноль.
 
     ImportResult:
       type: object

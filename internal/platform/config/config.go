@@ -64,6 +64,8 @@ type Sandbox struct {
 	TTL         time.Duration
 	MaxActive   int
 	PerIPHourly int
+	// Disabled — аварийно выключить создание демо (раннбук sandbox-abuse).
+	Disabled bool
 }
 
 type Observability struct {
@@ -114,6 +116,7 @@ func Load() (Config, error) {
 			TTL:         durDef(os.Getenv("SANDBOX_TTL"), 24*time.Hour),
 			MaxActive:   intDef(os.Getenv("SANDBOX_MAX_ACTIVE"), 300),
 			PerIPHourly: intDef(os.Getenv("SANDBOX_PER_IP_HOURLY"), 5),
+			Disabled:    boolDef(os.Getenv("SANDBOX_DISABLED"), false),
 		},
 		Observ: Observability{
 			SentryDSN:   os.Getenv("SENTRY_DSN"),

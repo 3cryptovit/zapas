@@ -1,25 +1,48 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { Check, ChevronRight, Copy, PackageCheck, Send, Truck } from 'lucide-react'
 
-import { Alert, Button, Card, EmptyState, Input, Skeleton } from '@/components/ui'
-import { formatDay, formatQty, formatQtyWithUnit } from '@/lib/format'
 import {
-  useCancelOrder,
-  useMe,
-  useOrder,
-  useOrders,
-  useReceiveOrder,
-  useSendOrder,
-} from '@/lib/queries'
-import type { OrderStatus } from '@/lib/types'
+  Alert,
+  BackLink,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Input,
+  PageHeader,
+  Skeleton,
+  Table,
+  Td,
+  Th,
+} from '@/components/ui'
+import { formatDate, formatDay, formatQty, formatQtyWithUnit, inputQty } from '@/lib/format'
+import { useCancelOrder, useMe, useOrder, useOrders, useReceiveOrder, useSendOrder } from '@/lib/queries'
+import type { Order, OrderStatus } from '@/lib/types'
 
-// Стадия заказа — плотность заливки: пунктир у черновика, штриховка
-// у отправленного (в пути), сплошная заливка у принятого.
-const statusTone: Record<OrderStatus, string> = {
-  draft: 'border border-dashed border-slate-400 text-slate-600',
-  sent: 'fill-sparse border border-slate-700 text-slate-900',
-  received: 'fill-solid border border-slate-900',
-  cancelled: 'border border-slate-300 text-slate-400 line-through',
+// Стадия заказа: серый черновик, синий «в пути» — идёт процесс,
+// зелёный «принят» — закрыто. Отменённый уходит в фон.
+const statusBadge: Record<OrderStatus, string> = {
+  draft: 'bg-slate-100 text-slate-600',
+  sent: 'bg-brand-50 text-brand-700',
+  received: 'bg-emerald-50 text-emerald-700',
+  cancelled: 'bg-slate-100 text-slate-400 line-through',
+}
+
+const filters: { value: OrderStatus | undefined; label: string }[] = [
+  { value: undefined, label: 'Все' },
+  { value: 'draft', label: 'Черновики' },
+  { value: 'sent', label: 'В пути' },
+  { value: 'received', label: 'Принятые' },
+]
+
+function OrderBadges({ order }: { order: Order }) {
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <Badge className={statusBadge[order.status]}>{order.status_label}</Badge>
+      {order.late && <Badge className="bg-red-50 text-red-700">опаздывает</Badge>}
+    </span>
+  )
 }
 
 /** Список заказов (§6). */
@@ -28,62 +51,110 @@ export function OrdersPage() {
   const { data, isLoading } = useOrders(filter)
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-slate-900">Заказы</h1>
+    <div>
+      <PageHeader title="Заказы" description="Черновик собирается из рекомендации на дашборде одной кнопкой." />
 
-      <div className="flex flex-wrap gap-2">
-        {([undefined, 'draft', 'sent', 'received'] as const).map((value) => (
-          <Button
-            key={value ?? 'all'}
-            variant={filter === value ? 'primary' : 'secondary'}
-            className="min-h-9 px-3 text-sm"
-            onClick={() => setFilter(value)}
-          >
-            {value === undefined
-              ? 'Все'
-              : value === 'draft'
-                ? 'Черновики'
-                : value === 'sent'
-                  ? 'В пути'
-                  : 'Принятые'}
-          </Button>
-        ))}
+      <div
+        role="tablist"
+        aria-label="Статус заказа"
+        className="mb-6 inline-flex max-w-full gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1"
+      >
+        {filters.map((f) => {
+          const active = filter === f.value
+          return (
+            <button
+              key={f.label}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setFilter(f.value)}
+              className={`min-h-9 rounded-md px-3 text-[13px] font-medium whitespace-nowrap transition-colors sm:min-h-8 ${
+                active ? 'bg-white text-slate-900 shadow-card' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {f.label}
+            </button>
+          )
+        })}
       </div>
 
-      <Card title="Список">
+      <Card flush>
         {isLoading ? (
-          <Skeleton className="h-32 w-full" />
+          <div className="p-6">
+            <Skeleton className="h-32 w-full" />
+          </div>
         ) : !data?.length ? (
           <EmptyState
+            icon={Truck}
             title="Заказов пока нет"
             hint="Заказ собирается одной кнопкой из блока «Заказать сегодня» на дашборде."
           />
         ) : (
-          <ul className="divide-y divide-slate-100">
-            {data.map((order) => (
-              <li key={order.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
-                <Link
-                  to={`/orders/${order.id}`}
-                  className="font-medium text-slate-900 hover:underline"
-                >
-                  {order.supplier_name ?? 'Поставщик'}
-                </Link>
-                <span className={`px-2 py-1 text-[0.625rem] font-semibold uppercase tracking-[0.12em] ${statusTone[order.status]}`}>
-                  {order.status_label}
-                </span>
-                {order.late && (
-                  <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-900">
-                    опаздывает
-                  </span>
-                )}
-                <span className="ml-auto text-slate-500">
-                  {order.expected_at ? `поставка ${order.expected_at}` : ''}
-                  {' · '}
-                  {new Date(order.created_at).toLocaleDateString('ru-RU')}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="divide-y divide-slate-100 md:hidden">
+              {data.map((order) => (
+                <li key={order.id}>
+                  <Link to={`/orders/${order.id}`} className="flex items-center justify-between gap-3 px-5 py-4">
+                    <span className="min-w-0">
+                      <span className="block font-medium text-slate-900">{order.supplier_name ?? 'Поставщик'}</span>
+                      <span className="mt-1.5 block">
+                        <OrderBadges order={order} />
+                      </span>
+                      <span className="mt-1.5 block text-[13px] text-slate-500">
+                        {order.expected_at ? `поставка ${formatDate(order.expected_at)}` : 'дата поставки не назначена'}
+                      </span>
+                    </span>
+                    <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-slate-300" strokeWidth={1.75} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden pt-5 md:block">
+              <Table>
+                <thead>
+                  <tr>
+                    <Th>Поставщик</Th>
+                    <Th>Статус</Th>
+                    <Th>Поставка</Th>
+                    <Th>Создан</Th>
+                    <Th>
+                      <span className="sr-only">Открыть</span>
+                    </Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((order) => (
+                    <tr key={order.id} className="group transition-colors hover:bg-slate-50/70 [&:last-child>td]:border-0">
+                      <Td>
+                        <Link to={`/orders/${order.id}`} className="font-medium text-slate-900 hover:text-brand-700">
+                          {order.supplier_name ?? 'Поставщик'}
+                        </Link>
+                      </Td>
+                      <Td>
+                        <OrderBadges order={order} />
+                      </Td>
+                      <Td className="whitespace-nowrap text-slate-600">
+                        {order.expected_at ? formatDate(order.expected_at) : <span className="text-slate-300">—</span>}
+                      </Td>
+                      <Td className="whitespace-nowrap text-slate-500">
+                        {new Date(order.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                      </Td>
+                      <Td align="right" className="w-px">
+                        <Link
+                          to={`/orders/${order.id}`}
+                          aria-label={`Открыть заказ: ${order.supplier_name ?? 'поставщик'}`}
+                          className="inline-flex size-8 items-center justify-center rounded-lg text-slate-300 group-hover:text-slate-500 hover:bg-slate-100"
+                        >
+                          <ChevronRight aria-hidden="true" className="size-4" strokeWidth={1.75} />
+                        </Link>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          </>
         )}
       </Card>
     </div>
@@ -107,12 +178,19 @@ export function OrderPage() {
     if (!data?.lines) return
     const initial: Record<string, string> = {}
     for (const line of data.lines) {
-      initial[line.item_id] = line.qty_received ?? line.qty_ordered
+      initial[line.item_id] = inputQty(line.qty_received ?? line.qty_ordered)
     }
     setActual(initial)
   }, [data?.id, data?.lines])
 
-  if (isLoading || !data) return <Skeleton className="h-96 w-full" />
+  if (isLoading || !data) {
+    return (
+      <div className="space-y-8">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-72 w-full" />
+      </div>
+    )
+  }
 
   const canManage = me?.tenant.permissions.manage_orders ?? false
   const error = send.error ?? cancel.error ?? receive.error
@@ -130,135 +208,157 @@ export function OrderPage() {
     }
   }
 
-  return (
-    <div className="space-y-4">
-      <div>
-        <Link to="/orders" className="text-sm text-slate-500 hover:underline">
-          ← К заказам
-        </Link>
-        <h1 className="mt-1 text-2xl font-semibold text-slate-900">
-          {data.supplier_name ?? 'Заказ'}
-        </h1>
-        <p className="text-sm text-slate-500">
-          {data.status_label}
-          {data.expected_at && ` · поставка ${formatDay(data.expected_at, data.expected_at)}`}
-        </p>
-      </div>
-
-      {error && <Alert kind="error">{error.message}</Alert>}
-      {data.late && (
-        <Alert kind="warning" title="Поставка опаздывает">
-          Заказ ожидался {data.expected_at} и ещё не принят.
-        </Alert>
+  const actions = (
+    <>
+      {canManage && data.status === 'draft' && (
+        <>
+          <Button variant="secondary" onClick={() => cancel.mutate(id)} loading={cancel.isPending}>
+            Отменить
+          </Button>
+          <Button icon={Send} onClick={() => send.mutate(id)} loading={send.isPending}>
+            Отправить поставщику
+          </Button>
+        </>
       )}
 
-      <Card title="Строки заказа">
-        <ul className="divide-y divide-slate-100">
-          {data.lines?.map((line) => (
-            <li key={line.item_id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
-              <Link to={`/items/${line.item_id}`} className="flex-1 font-medium text-slate-900 hover:underline">
-                {line.item_name}
-              </Link>
-
-              <span className="text-slate-600">
-                заказано {formatQtyWithUnit(line.qty_ordered, line.base_unit)}
-                {line.purchase_unit && Number(line.unit_factor) > 0 && (
-                  <span className="text-slate-400">
-                    {' '}
-                    ({formatQty(Number(line.qty_ordered) / Number(line.unit_factor))} {line.purchase_unit})
-                  </span>
-                )}
-              </span>
-
-              {data.status === 'sent' && receiving ? (
-                <Input
-                  inputMode="decimal"
-                  value={actual[line.item_id] ?? ''}
-                  onChange={(e) =>
-                    setActual((prev) => ({
-                      ...prev,
-                      [line.item_id]: e.target.value.replace(',', '.'),
-                    }))
-                  }
-                  className="w-28 text-right"
-                />
-              ) : line.qty_received !== undefined ? (
-                <span
-                  className={`tabular-nums ${
-                    Number(line.qty_received) !== Number(line.qty_ordered)
-                      ? 'font-medium text-amber-700'
-                      : 'text-slate-600'
-                  }`}
-                >
-                  принято {formatQty(line.qty_received)}
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      {data.text && data.status !== 'draft' && (
-        <Card
-          title="Текст заявки"
-          action={
-            <Button variant="secondary" className="min-h-9 text-sm" onClick={copyText}>
-              {copied ? 'Скопировано' : 'Скопировать'}
-            </Button>
-          }
-        >
-          <pre className="whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-800">
-            {data.text}
-          </pre>
-        </Card>
-      )}
-
-      <div className="flex flex-wrap justify-end gap-2">
-        {canManage && data.status === 'draft' && (
+      {data.status === 'sent' &&
+        (receiving ? (
           <>
-            <Button variant="secondary" onClick={() => cancel.mutate(id)} loading={cancel.isPending}>
-              Отменить
+            <Button variant="secondary" onClick={() => setReceiving(false)}>
+              Отмена
             </Button>
-            <Button onClick={() => send.mutate(id)} loading={send.isPending}>
-              Отправить поставщику
+            <Button
+              icon={PackageCheck}
+              loading={receive.isPending}
+              onClick={() =>
+                receive.mutate(
+                  {
+                    orderId: id,
+                    lines: Object.entries(actual).map(([item_id, qty_received]) => ({ item_id, qty_received })),
+                  },
+                  { onSuccess: () => setReceiving(false) },
+                )
+              }
+            >
+              Провести приёмку
             </Button>
           </>
-        )}
-
-        {data.status === 'sent' && (
+        ) : (
           <>
             {canManage && (
               <Button variant="secondary" onClick={() => cancel.mutate(id)} loading={cancel.isPending}>
                 Отменить
               </Button>
             )}
-            {receiving ? (
-              <>
-                <Button variant="secondary" onClick={() => setReceiving(false)}>
-                  Отмена
-                </Button>
-                <Button
-                  loading={receive.isPending}
-                  onClick={() =>
-                    receive.mutate(
-                      {
-                        orderId: id,
-                        lines: Object.entries(actual).map(([item_id, qty_received]) => ({
-                          item_id,
-                          qty_received,
-                        })),
-                      },
-                      { onSuccess: () => setReceiving(false) },
-                    )
-                  }
-                >
-                  Провести приёмку
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => setReceiving(true)}>Принять поставку</Button>
-            )}
+            <Button icon={PackageCheck} onClick={() => setReceiving(true)}>
+              Принять поставку
+            </Button>
           </>
+        ))}
+    </>
+  )
+
+  return (
+    <div>
+      <PageHeader
+        back={<BackLink to="/orders">Заказы</BackLink>}
+        title={data.supplier_name ?? 'Заказ'}
+        description={
+          <span className="flex flex-wrap items-center gap-2">
+            <OrderBadges order={data} />
+            {data.expected_at && (
+              <span>поставка {formatDay(data.expected_at, me?.tenant.today ?? data.expected_at)}</span>
+            )}
+          </span>
+        }
+        actions={actions}
+      />
+
+      <div className="space-y-6">
+        {error && <Alert kind="error">{error.message}</Alert>}
+        {data.late && (
+          <Alert kind="warning" title="Поставка опаздывает">
+            Заказ ожидался {data.expected_at ? formatDate(data.expected_at) : ''} и ещё не принят.
+          </Alert>
+        )}
+        {receiving && (
+          <Alert kind="info">Проверьте, сколько привезли на самом деле: приход запишется по этим цифрам.</Alert>
+        )}
+
+        <Card flush title="Строки заказа" description={`${data.lines?.length ?? 0} поз.`}>
+          <Table>
+            <thead>
+              <tr>
+                <Th>Позиция</Th>
+                <Th align="right">Заказано</Th>
+                <Th align="right">{data.status === 'sent' && receiving ? 'Привезли' : 'Принято'}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.lines?.map((line) => {
+                const mismatch =
+                  line.qty_received !== undefined && Number(line.qty_received) !== Number(line.qty_ordered)
+                return (
+                  <tr key={line.item_id} className="[&:last-child>td]:border-0">
+                    <Td>
+                      <Link to={`/items/${line.item_id}`} className="font-medium text-slate-900 hover:text-brand-700">
+                        {line.item_name}
+                      </Link>
+                    </Td>
+                    <Td align="right" className="whitespace-nowrap text-slate-900">
+                      {line.purchase_unit && Number(line.unit_factor) > 0 ? (
+                        <>
+                          <span className="font-medium">
+                            {formatQty(Number(line.qty_ordered) / Number(line.unit_factor))} {line.purchase_unit}
+                          </span>
+                          <span className="block text-[13px] text-slate-500">
+                            {formatQtyWithUnit(line.qty_ordered, line.base_unit)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-medium">{formatQtyWithUnit(line.qty_ordered, line.base_unit)}</span>
+                      )}
+                    </Td>
+                    <Td align="right">
+                      {data.status === 'sent' && receiving ? (
+                        <Input
+                          inputMode="decimal"
+                          aria-label={`Привезли: ${line.item_name}`}
+                          value={actual[line.item_id] ?? ''}
+                          onChange={(e) =>
+                            setActual((prev) => ({ ...prev, [line.item_id]: e.target.value.replace(',', '.') }))
+                          }
+                          className="ml-auto w-28 text-right tabular-nums"
+                        />
+                      ) : line.qty_received !== undefined ? (
+                        <span className={mismatch ? 'font-semibold text-amber-700' : 'text-slate-600'}>
+                          {formatQty(line.qty_received)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </Td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </Table>
+        </Card>
+
+        {data.text && data.status !== 'draft' && (
+          <Card
+            title="Текст заявки"
+            description="Готов к отправке поставщику"
+            action={
+              <Button variant="secondary" size="sm" icon={copied ? Check : Copy} onClick={copyText}>
+                {copied ? 'Скопировано' : 'Скопировать'}
+              </Button>
+            }
+          >
+            <pre className="rounded-lg bg-slate-50 p-4 font-sans text-sm leading-relaxed whitespace-pre-wrap text-slate-700">
+              {data.text}
+            </pre>
+          </Card>
         )}
       </div>
     </div>

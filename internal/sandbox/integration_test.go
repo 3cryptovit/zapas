@@ -479,3 +479,41 @@ func TestПромотка_НеделяСАвтопилотом(t *testing.T) {
 	}
 	_ = res
 }
+
+// TestГенератор_ШтукиЦелые — спрос считается дробным, а круассан нет. До
+// исправления на дашборде демо стояло «239,729 шт».
+func TestГенератор_ШтукиЦелые(t *testing.T) {
+	e := setup(t)
+	ctx := context.Background()
+
+	created, err := e.sandbox.Create(ctx, 2468)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tn := e.tenantOf(t, created)
+	if err := e.sandbox.SetAutopilot(ctx, tn.ID, true); err != nil {
+		t.Fatal(err)
+	}
+	// Неделя с автопилотом: расход дня, заказы и неполные поставки.
+	if _, err := e.simulator.Advance(ctx, e.tenantOf(t, created), 7); err != nil {
+		t.Fatal(err)
+	}
+
+	var total, fractional int
+	err = e.testEnv.Maint.InTx(ctx, func(ctx context.Context, tx postgres.Tx) error {
+		return tx.QueryRow(ctx, `
+			SELECT count(*), count(*) FILTER (WHERE m.qty <> trunc(m.qty))
+			FROM stock_movements m
+			JOIN items i ON i.tenant_id = m.tenant_id AND i.id = m.item_id
+			WHERE m.tenant_id = $1 AND i.base_unit = 'pcs'`, tn.ID).Scan(&total, &fractional)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total == 0 {
+		t.Fatal("в демо нет движений по штучным позициям — проверять нечего")
+	}
+	if fractional != 0 {
+		t.Errorf("дробных движений в штуках: %d из %d", fractional, total)
+	}
+}
